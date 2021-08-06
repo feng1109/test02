@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.order.mapper.OrderApproveMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.eseasky.modules.order.entity.OrderApprove">
+        <id column="approve_id" property="approveId" />
+        <result column="order_list_id" property="orderListId" />
+        <result column="order_type" property="orderType" />
+        <result column="user_id" property="userId" />
+        <result column="user_name" property="userName" />
+        <result column="approve_user_id" property="approveUserId" />
+        <result column="approve_user_name" property="approveUserName" />
+        <result column="approve_time" property="approveTime" />
+        <result column="reason" property="reason" />
+        <result column="area" property="area" />
+        <result column="approve_state" property="approveState" />
+        <result column="apply_time" property="applyTime" />
+        <result column="order_start_time" property="orderStartTime" />
+        <result column="order_end_time" property="orderEndTime" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+        <result column="del_flag" property="delFlag" />
+        <collection property="orderApprovers" ofType="OrderApprover">
+            <result column="approver_id" property="userId" />
+        </collection>
+     </resultMap>
+
+
+    <select id="getApproveList" resultType="ShowApproveListRepVO">
+SELECT
+    a.approve_id approveId,
+	a.order_list_id,
+	a.order_type,
+	a.user_id,
+	a.user_name,
+	a.apply_time,
+	a.order_start_time,
+	a.order_end_time,
+	a.area,
+	a.reason,
+	a.approve_state
+FROM
+	order_approve a
+	LEFT JOIN order_approver b ON a.approve_id = b.approve_id
+<where>
+    b.user_id = #{userId}
+    <if test="vo.starTime != null ">
+      and  a.apply_time >= #{vo.starTime}
+    </if>
+    <if test="vo.endTime != null ">
+      and  a.apply_time &lt;=#{vo.endTime}
+    </if>
+    <if test="vo.approveState != null and vo.approveState !=0 ">
+     and  a.approve_state = #{vo.approveState}
+    </if>
+    <if test="vo.queryCondition != null and vo.queryCondition != '' and vo.queryCondition ">
+    and  (a.user_name like concat('%',#{vo.queryCondition},'%') or a.area like concat('%',#{vo.queryCondition},'%')  )
+    </if>
+</where>
+    order by a.apply_time desc
+    </select>
+
+
+</mapper>

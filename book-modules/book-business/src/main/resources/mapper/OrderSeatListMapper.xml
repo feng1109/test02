@@ -1,0 +1,1379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.order.mapper.OrderSeatListMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.eseasky.modules.order.entity.OrderSeatList">
+        <id column="order_seat_id" property="orderSeatId"/>
+        <result column="list_no" property="listNo"/>
+        <result column="build_id" property="buildId"/>
+        <result column="floor_id" property="floorId"/>
+        <result column="room_id" property="roomId"/>
+        <result column="seat_id" property="seatId"/>
+        <result column="user_id" property="userId"/>
+        <result column="user_org_id" property="userOrgId"/>
+        <result column="user_classes" property="userClasses"/>
+        <result column="user_professional" property="userProfessional"/>
+        <result column="user_org_name" property="userOrgName"/>
+        <result column="user_phone" property="userPhone"/>
+        <result column="user_no" property="userNo"/>
+        <result column="user_type" property="userType"/>
+        <result column="user_wechat" property="userWechat"/>
+        <result column="user_name" property="userName"/>
+        <result column="build_org_id" property="buildOrgId"/>
+        <result column="order_type" property="orderType"/>
+        <result column="space_type" property="spaceType"/>
+        <result column="list_state" property="listState"/>
+        <result column="continue_count" property="continueCount"/>
+        <result column="long_require_time" property="longRequireTime"/>
+        <result column="long_use_time" property="longUseTime"/>
+        <result column="order_time" property="orderTime"/>
+        <result column="is_late" property="isLate"/>
+        <result column="is_advance_leave" property="isAdvanceLeave"/>
+        <result column="use_day" property="useDay"/>
+        <result column="away_time" property="awayTime"/>
+        <result column="is_comment" property="isComment"/>
+        <result column="list_use_time" property="listUseTime"/>
+        <result column="long_end_time" property="longEndTime"/>
+        <result column="is_cancel_long" property="isCancelLong"/>
+        <result column="order_start_time" property="orderStartTime"/>
+        <result column="order_end_time" property="orderEndTime"/>
+        <result column="use_start_time" property="useStartTime"/>
+        <result column="use_end_time" property="useEndTime"/>
+        <result column="comment" property="comment"/>
+        <result column="comment_time" property="commentTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="del_flag" property="delFlag"/>
+    </resultMap>
+
+    <select id="getUsedSeat" resultType="Map" parameterType="OrderListInfoDTO">
+        SELECT
+        a.seat_id,a.list_state
+        FROM
+        order_seat_list a
+        LEFT JOIN (
+        SELECT
+        seat_id
+        FROM
+        order_seat_list
+        WHERE
+        room_id = #{roomId}
+        AND list_state IN ( 1, 2, 3 )
+        AND order_start_time >= #{endTime}
+        OR order_end_time  &lt;= #{startTime}
+        ) b ON a.seat_id = b.seat_id
+        WHERE
+        a.room_id = #{roomId}
+        AND a.list_state IN ( 1, 2, 3 )
+        AND b.seat_id IS NULL
+    </select>
+
+    <select id="getBuildSingleList" resultType="OrderListRepVO"
+            parameterType="com.eseasky.modules.order.vo.request.OrderListReqVO">
+        SELECT
+        a.order_seat_id listId,
+        a.list_no list_no,
+        a.order_type order_type,
+        a.user_org_name orgName,
+        a.order_start_time order_start_time,
+        a.order_end_time order_end_time,
+        a.order_time order_time,
+        case
+        when a.list_state=1 then '待签到'
+        when a.list_state=2 then '使用中'
+        when a.list_state=3 then '已暂离'
+        when a.list_state=4 then '已完成'
+        when a.list_state in (5,6,7) then '违约'
+        when a.list_state=8 then '待签退'
+        when a.list_state in (9,10,11) then '已取消'
+        when a.list_state=12 then '待审批'
+        when a.list_state=13 then '审批驳回'
+        when a.list_state=14 then '审批失效'
+        else '无' end list_state,
+        a.user_phone user_phone,
+        a.user_no user_no,
+        a.user_wechat user_wechat,
+        CASE
+        a.user_type
+        WHEN 1 THEN
+        '学生'
+        WHEN 2 THEN
+        '教职工' ELSE '无'
+        END userType,
+        a.user_name user_name,
+        b.build_name build_name,
+        c.floor_num floor_num,
+        d.room_num room_num,
+        d.room_name room_name,
+        e.seat_num seat_num
+        FROM
+        order_seat_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        LEFT JOIN space_seat e ON a.seat_id = e.seat_id
+        <where>
+            a.order_type=#{VO.orderType}
+            <if test="VO.buildId != '' and VO.buildId != null ">
+                and a.build_id = #{VO.buildId}
+            </if>
+            <if test="VO.roomId != '' and VO.roomId != null ">
+                and a.room_id = #{VO.roomId}
+            </if>
+            <if test="VO.startTime != null">
+                and #{VO.startTime} &lt;= a.order_start_time
+            </if>
+            <if test="VO.endTime != null">
+                and #{VO.endTime} >= a.order_start_time
+            </if>
+            <if test="VO.listState == 1 ">
+                and a.list_state = 1
+            </if>
+            <if test="VO.listState == 2 ">
+                and a.list_state = 2
+            </if>
+            <if test="VO.listState == 3 ">
+                and a.list_state = 3
+            </if>
+            <if test="VO.listState == 4 ">
+                and a.list_state = 4
+            </if>
+            <if test="VO.listState == 5 ">
+                and a.list_state in (5,6,7)
+            </if>
+            <if test="VO.listState == 6 ">
+                and a.list_state = 8
+            </if>
+            <if test="VO.listState == 7 ">
+                and a.list_state in (9,10,11)
+            </if>
+            <if test="VO.listState == 8 ">
+                and a.list_state = 12
+            </if>
+            <if test="VO.listState == 9 ">
+                and a.list_state = 13
+            </if>
+            <if test="VO.listState == 10 ">
+                and a.list_state = 14
+            </if>
+            <if test="VO.queryCondition != null and VO.queryCondition != '' ">
+                and (a.user_name like concat('%',#{VO.queryCondition},'%')
+                or a.user_no like concat('%',#{VO.queryCondition},'%'))
+            </if>
+        </where>
+        order by a.order_time desc
+    </select>
+
+    <select id="getBuildGroupList" resultType="com.eseasky.modules.order.vo.response.OrderListRepVO">
+        SELECT
+        a.order_group_id listId,
+        a.list_no list_no,
+        a.order_type order_type,
+        a.order_start_time order_start_time,
+        a.order_end_time order_end_time,
+        a.launch_time order_time,
+        case
+        when a.list_state=1 then '待成团'
+        when a.list_state=2 then '拼团失败'
+        when a.list_state=3 then '使用中'
+        when a.list_state=4 then '已完成'
+        when a.list_state=5 then '已取消'
+        else '无' end list_state,
+        f.user_no user_no,
+        CASE
+        f.user_type
+        WHEN 1 THEN
+        '学生'
+        WHEN 2 THEN
+        '教职工' ELSE '无'
+        END userType,
+        a.user_name user_name,
+        b.build_name build_name,
+        c.floor_num floor_num,
+        d.room_num room_num,
+        d.room_name room_name,
+        e.group_name seat_num
+        FROM
+        order_group_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        LEFT JOIN space_group e ON a.seat_group_id = e.group_id
+        left join sys_user f on a.user_id = f.id
+        <where>
+            a.order_type=#{VO.orderType}
+            <if test="VO.buildId != '' and VO.buildId != null ">
+                and a.build_id = #{VO.buildId}
+            </if>
+            <if test="VO.roomId != '' and VO.roomId != null ">
+                and a.room_id = #{VO.roomId}
+            </if>
+            <if test="VO.startTime != null">
+                and #{VO.startTime} &lt;= a.order_start_time
+            </if>
+            <if test="VO.endTime != null">
+                and #{VO.endTime} >= a.order_start_time
+            </if>
+            <if test="VO.listState == 1 ">
+                and a.list_state = 1
+            </if>
+            <if test="VO.listState == 2 ">
+                and a.list_state = 2
+            </if>
+            <if test="VO.listState == 3 ">
+                and a.list_state = 3
+            </if>
+            <if test="VO.listState == 4 ">
+                and a.list_state = 4
+            </if>
+            <if test="VO.listState == 5 ">
+                and a.list_state = 5
+            </if>
+            <if test="VO.queryCondition != null and VO.queryCondition != '' ">
+                and (a.user_name like concat('%',#{VO.queryCondition},'%')
+                or f.user_no like concat('%',#{VO.queryCondition},'%'))
+            </if>
+        </where>
+        order by a.launch_time desc
+    </select>
+
+    <select id="getBuildMeetingList" resultType="com.eseasky.modules.order.vo.response.OrderListRepVO">
+        SELECT
+        a.order_meeting_id listId,
+        a.order_no list_no,
+        a.order_start_time order_start_time,
+        a.order_end_time order_end_time,
+        a.order_type orderType,
+        f.username userName,
+        f.user_no,
+        case
+        when a.state=1 then '待开始'
+        when a.state=2 then '使用中'
+        when a.state=4 then '已完成'
+        when a.state in (9,10,11) then '已取消'
+        when a.state=12 then '待审批'
+        when a.state=13 then '审批驳回'
+        when a.state=14 then '审批失效'
+        else '无' end listState,
+        CASE
+        f.user_type
+        WHEN 1 THEN
+        '学生'
+        WHEN 2 THEN
+        '教职工' ELSE '无'
+        END userType,
+        b.build_name build_name,
+        c.floor_num floor_num,
+        d.room_num room_num,
+        d.room_name room_name
+        FROM
+        order_meeting_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        left join sys_user f on f.id=a.user_id
+        <where>
+            a.order_type=#{VO.orderType}
+            <if test="VO.buildId != '' and VO.buildId != null ">
+                and a.build_id = #{VO.buildId}
+            </if>
+            <if test="VO.roomId != '' and VO.roomId != null ">
+                and a.room_id = #{VO.roomId}
+            </if>
+            <if test="VO.startTime != null">
+                and #{VO.startTime} &lt;= a.order_start_time
+            </if>
+            <if test="VO.endTime != null">
+                and #{VO.endTime} >= a.order_start_time
+            </if>
+            <if test="VO.listState == 1 ">
+                and a.state = 1
+            </if>
+            <if test="VO.listState == 2 ">
+                and a.state = 2
+            </if>
+            <if test="VO.listState == 3 ">
+                and a.state = 4
+            </if>
+            <if test="VO.listState == 4 ">
+                and a.state in (9,10,11)
+            </if>
+            <if test="VO.listState == 5 ">
+                and a.state = 12
+            </if>
+            <if test="VO.listState == 6 ">
+                and a.state = 13
+            </if>
+            <if test="VO.listState == 7 ">
+                and a.state = 14
+            </if>
+            <if test="VO.queryCondition != null and VO.queryCondition != '' ">
+                and (a.user_name like concat('%',#{VO.queryCondition},'%')
+                or f.user_no like concat('%',#{VO.queryCondition},'%'))
+            </if>
+        </where>
+        order by a.order_start_time desc
+
+
+    </select>
+
+    <select id="getShortLastList" parameterType="string" resultType="FirstPageRePVO">
+select * from((SELECT
+	a.order_seat_id listId,
+	a.seat_Id seatId,
+	a.order_type orderType,
+	a.list_state listState,
+	a.order_start_time orderStartTime,
+	a.order_end_time orderEndTime,
+	a.away_time away_time,
+	b.build_name buildName,
+	b.coordx,
+	b.coordy,
+	c.floor_num floorNum,
+	d.room_name roomName,
+	d.room_num roomNum
+FROM
+	order_seat_list a
+	LEFT JOIN space_build b ON a.build_id = b.build_id
+	LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+	LEFT JOIN space_room d ON a.room_id = d.room_id
+WHERE
+	a.user_id = #{userId}
+	AND a.order_type = '1'
+	AND a.list_state IN ( 1, 2, 3, 8 )
+ORDER BY
+	a.order_start_time ASC
+	LIMIT 1)
+	union all
+	(SELECT
+	a.order_group_detail_id listId,
+	e.seat_group_id seatId,
+	5 orderType,
+	a.user_state listState,
+	a.order_start_time orderStartTime,
+	a.order_end_time orderEndTime,
+	null away_time,
+	b.build_name buildName,
+	b.coordx,
+	b.coordy,
+	c.floor_num floorNum,
+	d.room_name roomName,
+	d.room_num roomNum
+FROM
+	order_group_detail a
+	left join order_group_list  e on a.order_group_id = e.order_group_id
+	LEFT JOIN space_build b ON e.build_id = b.build_id
+	LEFT JOIN space_floor c ON e.floor_id = c.floor_id
+	LEFT JOIN space_room d ON e.room_id = d.room_id
+WHERE
+	a.user_id = #{userId}
+	AND a.user_state IN (3,4,5)
+ORDER BY
+	a.order_start_time ASC
+	LIMIT 1)) total
+	ORDER BY total.orderStartTime  limit 1
+    </select>
+
+    <select id="getLongLastList" parameterType="string" resultType="FirstPageRePVO">
+ SELECT
+    a.order_seat_id listId,
+    a.seat_Id seatId,
+	a.order_type orderType,
+	a.list_state listState,
+	a.long_use_time longUseTime,
+	a.order_start_time orderStartTime,
+	a.order_end_time orderEndTime,
+	b.build_name buildName,
+	b.coordx,
+	b.coordy,
+	c.floor_num floorNum,
+	d.room_name roomName,
+	d.room_num roomNum
+FROM
+	order_seat_list a
+	LEFT JOIN space_build b ON a.build_id = b.build_id
+	LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+	LEFT JOIN space_room d ON a.room_id = d.room_id
+WHERE
+	a.user_id = #{userId}
+	AND a.order_type = '2' and a.list_state in (1,2)
+ORDER BY
+	 a.order_start_time ASC
+	LIMIT 1
+    </select>
+
+
+    <select id="showListDetail" resultType="com.eseasky.modules.order.vo.response.OrderListDetailVO"
+            parameterType="string">
+SELECT
+  a.order_seat_id,
+  a.list_no,
+	a.user_name,
+	a.is_late,
+	a.order_type orderType,
+	a.list_state listState,
+	a.order_time orderTime,
+	a.order_start_time orderStartTime,
+	a.order_end_time orderEndTime,
+	a.use_start_time useStartTime,
+	a.use_end_time useEndTime,
+	a.is_late isLate,
+	b.build_name buildName,
+	c.floor_num floorNum,
+	d.room_name roomName,
+	d.room_num roomNum,
+	e.seat_num seatNum
+FROM
+	order_seat_list a
+	LEFT JOIN space_build b ON a.build_id = b.build_id
+	LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+	LEFT JOIN space_room d ON a.room_id = d.room_id
+	LEFT JOIN space_seat e ON a.seat_id = e.seat_id
+WHERE
+	a.order_seat_id = #{orderSeatId}
+    </select>
+
+    <select id="getUserShortRent" parameterType="UserListReqVO" resultType="UserRentListVO">
+        SELECT
+        a.order_seat_id,
+        a.order_type,
+        a.order_start_time,
+        a.order_end_time,
+        a.use_start_time,
+        a.use_end_time,
+        a.order_type orderType,
+        a.list_state listState,
+        a.order_start_time orderStartTime,
+        a.order_end_time orderEndTime,
+        a.room_id roomId,
+        a.seat_id seatId,
+        a.is_comment isComment,
+        b.build_name buildName,
+        c.floor_num floorNum,
+        d.room_name roomName,
+        d.room_num roomNum,
+        e.seat_num seatNum
+        FROM
+        order_seat_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        LEFT JOIN space_seat e ON a.seat_id = e.seat_id
+        <where>
+            <if test="vo.userId != null and vo.userId != ''">
+                and a.user_id = #{vo.userId}
+            </if>
+
+            <if test="vo.endTime != null ">
+                and a.order_start_time &gt;= #{vo.endTime}
+            </if>
+            and a.order_type = '1'
+
+        </where>
+        order by a.order_time desc
+    </select>
+
+    <select id="getUserLongRent" parameterType="UserListReqVO" resultType="UserRentListVO">
+        SELECT
+        a.order_seat_id,
+        a.order_type,
+        a.order_start_time,
+        a.order_end_time,
+        a.use_start_time,
+        a.use_end_time,
+        a.order_type orderType,
+        a.list_state listState,
+        a.long_use_time longUseTime,
+        a.order_start_time orderStartTime,
+        a.order_end_time orderEndTime,
+        a.room_id roomId,
+        a.is_comment isComment,
+        b.build_name buildName,
+        c.floor_num floorNum,
+        d.room_name roomName,
+        d.room_num roomNum,
+        e.seat_num seatNum
+        FROM
+        order_seat_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        LEFT JOIN space_seat e ON a.seat_id = e.seat_id
+        <where>
+            <if test="vo.userId != null and vo.userId != ''">
+                and a.user_id = #{vo.userId}
+            </if>
+            <if test="vo.endTime != null ">
+                and a.order_start_time &gt;= #{vo.endTime}
+            </if>
+            and a.order_type = '2'
+        </where>
+        order by a.order_time desc
+    </select>
+
+
+    <select id="getClockInfo" parameterType="ShowClockReqVO" resultType="ShowClockRepVO">
+       SELECT
+        a.order_seat_id,
+        a.order_type,
+        a.order_start_time,
+        a.order_end_time,
+        a.order_type orderType,
+        a.list_state listState,
+        a.long_use_time longUseTime,
+        a.use_start_time,
+	    a.use_end_time,
+        a.order_start_time orderStartTime,
+        a.order_end_time orderEndTime,
+        a.room_id roomId,
+        b.build_name buildName,
+        c.floor_num floorNum,
+        d.room_name roomName,
+        d.room_num roomNum,
+        e.seat_num seatNum,
+	    f.sign_away_limit_time awayLimitTime
+FROM
+	order_seat_list a
+	LEFT JOIN space_build b ON a.build_id = b.build_id
+	LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+	LEFT JOIN space_room d ON a.room_id = d.room_id
+	LEFT JOIN space_seat e ON a.seat_id = e.seat_id
+	,order_rule f
+	where a.order_seat_id = #{orderSeatId}
+	limit 1
+    </select>
+
+    <select id="getOrderedSeatByRoomId" parameterType="map" resultType="com.alibaba.fastjson.JSONObject">
+		SELECT
+			seat_id as seatId,
+			list_state as listState
+		FROM
+			order_seat_list
+		WHERE
+			room_id = #{roomId}
+		AND #{endDate} &gt; order_start_time
+		AND #{endDate} &lt;= order_end_time
+		UNION ALL
+		SELECT
+			seat_id as seatId,
+			list_state as listState
+		FROM
+			order_seat_list
+		WHERE
+			room_id = #{roomId}
+		AND #{startDate} &gt;= order_start_time
+		AND #{startDate} &lt; order_end_time
+    </select>
+
+    <select id="getOrderedSeatByBuildIds" parameterType="map" resultType="com.alibaba.fastjson.JSONObject">
+        SELECT
+        seat_id as seatId,
+        list_state as listState
+        FROM
+        order_seat_list
+        WHERE
+        room_id = #{roomId}
+        AND #{endDate} &gt; order_start_time
+        AND #{endDate} &lt;= order_end_time
+        UNION ALL
+        SELECT
+        seat_id as seatId,
+        list_state as listState
+        FROM
+        order_seat_list
+        WHERE
+        build_id in
+        <foreach collection="buildIdList" item="buildId" index="index" open="(" close=")" separator=",">
+            #{buildId}
+        </foreach>
+        AND #{startDate} &gt;= order_start_time
+        AND #{startDate} &lt; order_end_time
+    </select>
+
+    <select id="getRepeatCount" resultType="integer" parameterType="GetRepeatCountDTO">
+        SELECT
+        count(*)
+        FROM
+        (
+        SELECT
+        a.order_seat_id id
+        FROM
+        order_seat_list a
+        WHERE
+        a.user_id = #{userId}
+        AND del_flag = '0'
+        AND a.list_state IN ( 1, 2, 3 )
+        AND ((
+        a.order_start_time >= #{orderStartTime}
+        AND a.order_start_time &lt;= #{orderEndTime} ) OR ( a.order_end_time > #{orderStartTime}
+        AND a.order_end_time &lt;= #{orderEndTime}
+        )) UNION ALL
+        SELECT
+        b.order_group_detail_id id
+        FROM
+        order_group_detail b
+        WHERE
+        b.user_id = #{userId}
+        AND b.del_flag = '0'
+        AND b.user_state IN ( 1, 3, 4 )
+        AND ((
+        b.order_start_time >= #{orderStartTime}
+        AND b.order_start_time &lt;= #{orderEndTime} ) OR ( b.order_end_time >= #{orderStartTime}
+        AND b.order_end_time &lt;= #{orderEndTime}
+        ))) total
+    </select>
+
+
+    <select id="getSeatRepeat" resultType="java.lang.Integer" parameterType="OrderSeatList">
+
+        SELECT
+        count(*)
+        FROM
+        order_seat_list a
+        LEFT JOIN (
+        SELECT
+        order_seat_id
+        FROM
+        order_seat_list
+        WHERE
+        seat_id =#{seatId}
+
+        AND list_state IN ( 1, 2, 3 ,12)
+        AND order_start_time >= #{orderEndTime}
+
+        OR order_end_time  &lt;= #{orderStartTime}
+
+        ) b ON a.order_seat_id = b.order_seat_id
+        WHERE
+        a.seat_id = #{seatId}
+
+        AND a.list_state IN ( 1, 2, 3,12)
+        AND b.order_seat_id IS NULL
+    </select>
+
+
+    <select id="getShortDayLearnTime" resultType="StatisticsLearnTimeDTO">
+	SELECT
+	substring( order_start_time, 9, 2 ) DAY,
+	 ifnull(SUM( list_use_time ),0)	 learnTime
+    FROM
+	order_seat_list
+    WHERE
+	LEFT ( order_start_time, 7 ) = #{month}
+	and order_type = 1
+	and user_id= #{userId}
+    GROUP BY
+	LEFT ( order_start_time, 10 )
+	ORDER by
+	LEFT ( order_start_time, 10 ) asc
+    </select>
+
+
+    <select id="getLongDayLearnTime" resultType="StatisticsLearnTimeDTO">
+    SELECT
+	substring( use_start_time, 9, 2 ) DAY,
+    ifnull(SUM( list_use_time ),0)	 learnTime
+    FROM
+	order_long_rent_detail
+    WHERE
+	LEFT ( use_start_time, 7 ) = #{month}
+	and user_id= #{userId}
+    GROUP BY
+	LEFT ( use_start_time, 10 )
+	ORDER by
+	LEFT ( use_start_time, 10 ) asc
+    </select>
+
+
+    <select id="getGroupDayLearnTime" resultType="com.eseasky.modules.order.dto.StatisticsLearnTimeDTO">
+    SELECT
+	substring( order_start_time, 9, 2 ) DAY,
+	 ifnull(SUM( learn_time ),0)	 learnTime
+    FROM
+	order_group_detail
+    WHERE
+    LEFT ( use_start_time, 7 ) = #{month}
+	and user_id= #{userId}
+    GROUP BY
+	LEFT ( order_start_time, 10 )
+	ORDER by
+	LEFT ( order_start_time, 10 ) asc
+    </select>
+
+    <select id="getMonthCount" resultType="java.lang.Integer">
+
+	SELECT count(*) FROM
+    (( SELECT user_id FROM order_seat_list WHERE user_id = #{userId} AND LEFT ( order_start_time, 7 )= #{month})
+    UNION ALL
+    ( SELECT user_id FROM order_group_detail WHERE user_id = #{userId} AND LEFT ( order_start_time, 7 )= #{month})) total
+    </select>
+
+    <select id="getStatisticsDate" resultType="StatisticsLearnTimeDTO">
+        SELECT
+        substring( order_start_time, 9, 2 ) day,
+        count(*) count
+        FROM
+        order_seat_list
+        <where>
+            LEFT(order_start_time,7)= #{month}
+            <if test="type == 2">
+                and list_state in (5,6,7)
+            </if>
+            <if test="type == 3">
+                and list_state = 4
+            </if>
+            <if test="type == 4">
+                and is_advance_leave = 1
+            </if>
+        </where>
+
+        GROUP BY LEFT(order_start_time,10)
+
+    </select>
+    <select id="getStudentTop" resultType="StatisticsLearnTimeDTO">
+    SELECT
+	user_id ,
+	user_name,
+	count(*) count  from order_seat_list
+	WHERE
+	LEFT ( order_start_time, 7 )= #{month}
+    GROUP BY
+	user_id
+	ORDER BY count(*) desc  limit 10
+    </select>
+
+    <select id="getSpaceTop" resultType="com.eseasky.modules.order.dto.StatisticsLearnTimeDTO">
+    SELECT
+	a.room_id,
+	b.room_name,
+	count(*) count  from order_seat_list a
+	left join
+	space_room b on a.room_id=b.room_id
+	WHERE
+	LEFT ( order_start_time, 7 )= #{month}
+    GROUP BY
+	room_id
+	ORDER BY count(*) desc  limit 10
+
+    </select>
+
+
+    <select id="getSpaceShortSta" resultType="SpaceStatisticsRepVO">
+        SELECT
+        a.room_id,
+        b.room_name ,
+        count(*) totalCount,
+        SUM(a.list_use_time) totalTime
+        FROM
+        order_seat_list a
+        LEFT JOIN space_room b
+        on
+        a.room_id = b.room_id
+        <where>
+            a.order_type=1
+            <if test="vo.buildId != null and vo.buildId.size>0">
+                and a.build_id in
+                <foreach collection="vo.buildId" open="(" close=")" item="id" separator=",">
+                    #{id}
+                </foreach>
+            </if>
+            <if test="vo.roomId != null and vo.roomId != ''">
+                and a.room_id=#{vo.roomId}
+            </if>
+            <if test="vo.startDate != null ">
+                and a.order_start_time >= #{vo.startDate}
+            </if>
+            <if test="vo.endDate != null ">
+                and a.order_end_time &lt;= #{vo.endDate}
+            </if>
+        </where>
+        group by a.room_id
+        <if test="vo.sortType == 1">
+            order by count(*) asc
+        </if>
+        <if test="vo.sortType == 2 || vo.sortType == null">
+            order by count(*) desc
+        </if>
+        <if test="vo.sortType == 3">
+            order by SUM(a.list_use_time) asc
+        </if>
+        <if test="vo.sortType == 4">
+            order by SUM(a.list_use_time) desc
+        </if>
+    </select>
+
+    <select id="getSpaceGroupSta" resultType="com.eseasky.modules.order.vo.response.SpaceStatisticsRepVO">
+        SELECT
+        a.room_id,
+        b.room_name,
+        count(*) totalCount,
+        IFNULL( SUM( c.learn_time ), 0 ) totalTime
+        FROM
+        order_group_list a
+        LEFT JOIN space_room b ON a.room_id = b.room_id
+        LEFT JOIN order_group_detail c ON a.order_group_id = c.order_group_id
+        <where>
+
+            <if test="vo.buildId != null and vo.buildId.size>0">
+                and a.build_id in
+                <foreach collection="vo.buildId" open="(" close=")" item="id" separator=",">
+                    #{id}
+                </foreach>
+            </if>
+            <if test="vo.roomId != null and vo.roomId != ''">
+                and a.room_id=#{vo.roomId}
+            </if>
+            <if test="vo.startDate != null ">
+                and a.order_start_time >= #{vo.startDate}
+            </if>
+            <if test="vo.endDate != null ">
+                and a.order_end_time &lt;= #{vo.endDate}
+            </if>
+        </where>
+        group by a.room_id
+        <if test="vo.sortType == 1">
+            order by totalCount asc
+        </if>
+        <if test="vo.sortType == 2 || vo.sortType == null">
+            order by totalCount desc
+        </if>
+        <if test="vo.sortType == 3">
+            order by totalTime asc
+        </if>
+        <if test="vo.sortType == 4">
+            order by totalTime desc
+        </if>
+    </select>
+
+    <select id="getSpaceMeetShortSta" resultType="com.eseasky.modules.order.vo.response.SpaceStatisticsRepVO">
+        SELECT
+        a.room_id,
+        b.room_name,
+        count(*) totalCount,
+        SUM( a.use_time ) totalTime
+        FROM
+        order_meeting_list a
+        LEFT JOIN space_room b ON a.room_id = b.room_id
+        <where>
+            a.order_type=3
+            <if test="vo.buildId != null and vo.buildId.size>0">
+                and a.build_id in
+                <foreach collection="vo.buildId" open="(" close=")" item="id" separator=",">
+                    #{id}
+                </foreach>
+            </if>
+            <if test="vo.roomId != null and vo.roomId != ''">
+                and a.room_id=#{vo.roomId}
+            </if>
+            <if test="vo.startDate != null ">
+                and a.order_start_time >= #{vo.startDate}
+            </if>
+            <if test="vo.endDate != null ">
+                and a.order_end_time &lt;= #{vo.endDate}
+            </if>
+        </where>
+        group by a.room_id
+        <if test="vo.sortType == 1">
+            order by totalCount asc
+        </if>
+        <if test="vo.sortType == 2 || vo.sortType == null">
+            order by totalCount desc
+        </if>
+        <if test="vo.sortType == 3">
+            order by totalTime asc
+        </if>
+        <if test="vo.sortType == 4">
+            order by totalTime desc
+        </if>
+    </select>
+
+    <select id="getSpaceMeetLongSta" resultType="com.eseasky.modules.order.vo.response.SpaceStatisticsRepVO">
+        SELECT
+        a.room_id,
+        b.room_name,
+        count(*) totalCount,
+        SUM( a.use_time ) totalTime
+        FROM
+        order_meeting_list a
+        LEFT JOIN space_room b ON a.room_id = b.room_id
+        <where>
+            a.order_type=4
+            <if test="vo.buildId != null and vo.buildId.size>0">
+                and a.build_id in
+                <foreach collection="vo.buildId" open="(" close=")" item="id" separator=",">
+                    #{id}
+                </foreach>
+            </if>
+            <if test="vo.roomId != null and vo.roomId != ''">
+                and a.room_id=#{vo.roomId}
+            </if>
+            <if test="vo.startDate != null ">
+                and a.order_start_time >= #{vo.startDate}
+            </if>
+            <if test="vo.endDate != null ">
+                and a.order_end_time &lt;= #{vo.endDate}
+            </if>
+        </where>
+        group by a.room_id
+        <if test="vo.sortType == 1">
+            order by totalCount asc
+        </if>
+        <if test="vo.sortType == 2 || vo.sortType == null">
+            order by totalCount desc
+        </if>
+        <if test="vo.sortType == 3">
+            order by totalTime asc
+        </if>
+        <if test="vo.sortType == 4">
+            order by totalTime desc
+        </if>
+    </select>
+
+
+    <select id="getGroupAnalysis" parameterType="AnaRoomReqVO" resultType="SpaceAnalysisRepVO">
+        SELECT
+        CONCAT_WS(
+        '-',
+        SUBSTRING( order_start_time, 12, 5 ),
+        SUBSTRING( order_end_time, 12, 5 )) orderTime,
+        count(*) orderCount
+        FROM
+        `order_group_list`
+        WHERE
+        room_id = #{vo.roomId}
+        <if test="vo.startDate != null ">
+            and order_start_time >= #{vo.startDate}
+        </if>
+        <if test="vo.endDate != null ">
+            and order_end_time &lt;= #{vo.endDate}
+        </if>
+        GROUP BY
+        SUBSTRING( order_start_time, 12, 5 ),
+        SUBSTRING( order_end_time, 12, 5 )
+        ORDER BY
+        SUBSTRING( order_start_time, 12, 5 ),
+        SUBSTRING( order_end_time, 12, 5 );
+    </select>
+
+    <select id="getShortAnalysis" parameterType="AnaRoomReqVO" resultType="SpaceAnalysisRepVO">
+        SELECT
+        CONCAT_WS(
+        '-',
+        SUBSTRING( order_start_time, 12, 5 ),
+        SUBSTRING( order_end_time, 12, 5 )) orderTime,
+        count(*) orderCount
+        FROM
+        `order_seat_list`
+        WHERE
+        room_id = #{vo.roomId}
+        <if test="vo.startDate != null ">
+            and order_start_time >= #{vo.startDate}
+        </if>
+        <if test="vo.endDate != null ">
+            and order_end_time &lt;= #{vo.endDate}
+        </if>
+        GROUP BY
+        SUBSTRING( order_start_time, 12, 5 ),
+        SUBSTRING( order_end_time, 12, 5 )
+        ORDER BY
+        SUBSTRING( order_start_time, 12, 5 ),
+        SUBSTRING( order_end_time, 12, 5 );
+    </select>
+
+    <select id="getMeetingAnalysis" parameterType="AnaRoomReqVO" resultType="SpaceAnalysisRepVO">
+        SELECT
+        CONCAT_WS(
+        '-',
+        SUBSTRING( order_start_time, 12, 5 ),
+        SUBSTRING( order_end_time, 12, 5 )) orderTime,
+        count(*) orderCount
+        FROM
+        `order_meeting_list`
+        WHERE
+        room_id = #{vo.roomId}
+        <if test="vo.startDate != null ">
+            and order_start_time >= #{vo.startDate}
+        </if>
+        <if test="vo.endDate != null ">
+            and order_end_time &lt;= #{vo.endDate}
+        </if>
+        GROUP BY
+        SUBSTRING( order_start_time, 12, 5 ),
+        SUBSTRING( order_end_time, 12, 5 )
+        ORDER BY
+        SUBSTRING( order_start_time, 12, 5 ),
+        SUBSTRING( order_end_time, 12, 5 );
+    </select>
+
+    <select id="getUserStatistics" resultType="com.eseasky.modules.order.vo.response.UserStatisticsRepVO">
+        SELECT
+        a.user_id,
+        a.order_count,
+        a.learn_total_time,
+        a.cancel_count,
+        a.violate_count,
+        a.order_count-a.cancel_count-a.violate_count useCount,
+        a.in_blacklist_count,
+        b.username userName,
+        b.user_no
+        FROM
+        order_user a
+        LEFT JOIN sys_user b
+        on a.user_id=b.id
+        <where>
+            1=1
+            <if test="vo.orgId != null and vo.orgId != ''">
+                and a.org_id like concat('%',#{vo.orgId},'%')
+            </if>
+            <if test="vo.userName != null and vo.userName != ''">
+                and b.username like concat('%',#{vo.userName},'%')
+            </if>
+        </where>
+        GROUP BY b.id
+        <if test="vo.sortType == 1">
+            order by a.order_count asc
+        </if>
+        <if test="vo.sortType == 2 || vo.sortType == null">
+            order by a.order_count desc
+        </if>
+        <if test="vo.sortType == 3">
+            order by a.learn_total_time asc
+        </if>
+        <if test="vo.sortType == 4">
+            order by a.learn_total_time desc
+        </if>
+        <if test="vo.sortType == 5">
+            order by a.cancel_count asc
+        </if>
+        <if test="vo.sortType == 6">
+            order by a.cancel_count desc
+        </if>
+        <if test="vo.sortType == 7">
+            order by a.violate_count asc
+        </if>
+        <if test="vo.sortType == 8">
+            order by a.violate_count desc
+        </if>
+        <if test="vo.sortType == 9">
+            order by a.in_blacklist_count asc
+        </if>
+        <if test="vo.sortType == 10">
+            order by a.in_blacklist_count desc
+        </if>
+        <if test="vo.sortType == 11">
+            order by useCount asc
+        </if>
+        <if test="vo.sortType == 12">
+            order by useCount desc
+        </if>
+    </select>
+
+
+    <select id="getShortDetail" resultType="StaShortRepVO">
+        SELECT
+        a.order_seat_id order_seat_id,
+        a.order_type order_type,
+        a.order_start_time order_start_time,
+        a.order_end_time order_end_time,
+        a.use_start_time use_start_time,
+        a.use_end_time use_end_time,
+        a.is_late is_late,
+        a.list_state list_state,
+        a.user_phone user_phone,
+        a.user_no user_no,
+        a.user_wechat user_wechat,
+        a.user_org_name orgName,
+        CASE
+        a.user_type
+        WHEN 1 THEN
+        '学生'
+        WHEN 2 THEN
+        '教职工' ELSE '无'
+        END userType,
+        a.user_name user_name,
+        b.build_name build_name,
+        c.floor_num floor_num,
+        d.room_num room_num,
+        d.room_name room_name,
+        e.seat_num seat_num
+        FROM
+        order_seat_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        LEFT JOIN space_seat e ON a.seat_id = e.seat_id
+        where
+        a.order_seat_id = #{orderSeatId}
+    </select>
+
+
+    <select id="getLongDetail" resultType="com.eseasky.modules.order.vo.response.StaLongRepVO">
+        SELECT
+        a.order_seat_id order_seat_id,
+        a.order_type order_type,
+        a.user_id userId,
+        a.order_start_time order_start_time,
+        a.order_end_time order_end_time,
+        a.list_state list_state,
+        a.user_phone user_phone,
+        a.user_no user_no,
+        a.user_wechat user_wechat,
+        a.user_org_name orgName,
+        CASE
+        a.user_type
+        WHEN 1 THEN
+        '学生'
+        WHEN 2 THEN
+        '教职工' ELSE '无'
+        END userType,
+        a.user_name user_name,
+        b.build_name build_name,
+        c.floor_num floor_num,
+        d.room_num room_num,
+        d.room_name room_name,
+        e.seat_num seat_num,
+        a.long_require_time,
+        a.long_use_time useTime
+        FROM
+        order_seat_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        LEFT JOIN space_seat e ON a.seat_id = e.seat_id
+        where
+        a.order_seat_id = #{orderSeatId}
+
+    </select>
+
+    <select id="getGroupDetail" resultType="com.eseasky.modules.order.vo.response.StaGroupRepVO">
+         SELECT
+        a.order_group_id order_group_id,
+        a.order_type order_type,
+        a.order_start_time order_start_time,
+        a.order_end_time order_end_time,
+        a.list_state list_state,
+		f.user_no,
+		f.phone userPhone,
+		a.user_org_name orgName,
+        CASE
+        f.user_type
+        WHEN 1 THEN
+        '学生'
+        WHEN 2 THEN
+        '教职工' ELSE '无'
+        END userType,
+        a.user_name user_name,
+        b.build_name build_name,
+        c.floor_num floor_num,
+        d.room_num room_num,
+        d.room_name room_name,
+        e.group_name seat_num
+        FROM
+        order_group_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        LEFT JOIN space_group e ON a.seat_group_id = e.group_id
+				left join sys_user f on  a.user_id =f.id
+        where
+        a.order_group_id = #{orderSeatId}
+
+
+    </select>
+
+    <select id="getLongRecords" resultType="com.eseasky.modules.order.vo.response.StaLongDetailRepVO">
+    SELECT
+	use_start_time arriveTime,
+	IFNULL( use_end_time, '未签退' ) leaveTime
+    FROM
+	order_long_rent_detail
+    WHERE
+	order_seat_id = #{orderGroupId}
+
+
+    </select>
+
+    <select id="getUserAnalysis" resultType="com.eseasky.modules.order.vo.response.UserAnalysisRepVO">
+    SELECT
+	total.roomId,
+	total.roomName,
+	count(*) orderCount
+    FROM
+	((
+		SELECT
+			b.room_id roomId,
+			b.room_name roomName
+		FROM
+			order_seat_list a
+			LEFT JOIN space_room b ON a.room_id = b.room_id
+		WHERE
+			user_id = #{userId}
+			) UNION ALL
+		(
+		SELECT
+			b.room_id roomId,
+			b.room_name roomName
+		FROM
+			order_group_list a
+			LEFT JOIN space_room b ON a.room_id = b.room_id
+		WHERE
+			user_id = #{userId}
+		) UNION ALL
+		(
+		SELECT
+			b.room_id roomId,
+			b.room_name roomName
+		FROM
+			order_meeting_list a
+			LEFT JOIN space_room b ON a.room_id = b.room_id
+		WHERE
+			user_id = #{userId}
+		)) total
+    GROUP BY
+	total.roomId
+    ORDER BY
+	orderCount DESC
+    </select>
+
+    <select id="getSpaceLongSta" resultType="com.eseasky.modules.order.vo.response.SpaceStatisticsRepVO">
+        SELECT
+        IF(sum( b.list_use_time ) is null,0,count(*)) totalCount,
+        a.room_id,
+        c.room_name,
+        IFNULL(sum( b.list_use_time ),0) totalTime
+        FROM
+        order_seat_list a
+        left JOIN order_long_rent_detail b ON a.order_seat_id = b.order_seat_id
+        LEFT JOIN space_room c ON a.room_id = c.room_id
+        <where>
+            a.order_type=2
+            <if test="vo.buildId != null and vo.buildId != ''">
+                and a.build_id=#{vo.buildId}
+            </if>
+            <if test="vo.roomId != null and vo.roomId != ''">
+                and a.room_id=#{vo.roomId}
+            </if>
+            <if test="vo.startDate != null ">
+                and a.order_start_time >= #{vo.startDate}
+            </if>
+            <if test="vo.endDate != null ">
+                and a.order_start_time &lt;= #{vo.endDate}
+            </if>
+        </where>
+        group by a.room_id
+        <if test="vo.sortType == 1">
+            order by count(*) asc
+        </if>
+        <if test="vo.sortType == 2 || vo.sortType == null">
+            order by count(*) desc
+        </if>
+        <if test="vo.sortType == 3">
+            order by SUM(b.list_use_time) asc
+        </if>
+        <if test="vo.sortType == 4">
+            order by SUM(b.list_use_time) desc
+        </if>
+
+    </select>
+
+
+    <select id="getOftenUseArea" resultType="com.eseasky.modules.order.vo.request.OftenUserAreaRepVO">
+    SELECT
+	area,
+	build_id,
+	count(*) useCount,
+	1 type
+FROM
+	((
+		SELECT
+			a.build_id,
+			CONCAT_WS( '-', c.org_name, b.build_name ) area
+		FROM
+			order_seat_list a
+			LEFT JOIN space_build b ON a.build_id = b.build_id
+			LEFT JOIN sys_org c ON a.build_org_id = c.id
+		WHERE
+			user_id = #{userId}
+			and
+			b.del_flag = '1'
+			) UNION ALL
+		(
+		SELECT
+			a.build_id,
+			CONCAT_WS( '-', c.org_name, b.build_name ) area
+		FROM
+			order_group_list a
+			LEFT JOIN order_group_detail e ON a.order_group_id = e.order_group_id
+			LEFT JOIN space_build b ON a.build_id = b.build_id
+			LEFT JOIN sys_org c ON a.build_org_id = c.id
+		WHERE
+			e.user_id = #{userId}
+			and
+			b.del_flag = '1'
+		)) total
+GROUP BY
+	total.build_id
+ORDER BY
+	useCount DESC
+LIMIT 2
+    </select>
+
+    <select id="getOrderSeatListDetail" resultType="com.eseasky.modules.order.dto.OrderSeatListDTO">
+        SELECT
+            a.order_seat_id,
+            a.order_type,
+            a.user_id,
+            a.order_start_time,
+            a.order_end_time,
+            a.list_state,
+            a.user_phone,
+            a.user_no,
+            a.user_wechat,
+            a.user_org_name,
+            a.user_name,
+            a.build_id,
+            b.build_name,
+            b.build_num,
+            a.floor_id,
+            c.floor_name,
+            c.floor_num,
+            a.room_id,
+            d.room_name,
+            d.room_num,
+            e.seat_num,
+            a.long_require_time,
+            a.long_use_time useTime
+        FROM
+            order_seat_list a
+                LEFT JOIN space_build b ON a.build_id = b.build_id
+                LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+                LEFT JOIN space_room d ON a.room_id = d.room_id
+                LEFT JOIN space_seat e ON a.seat_id = e.seat_id
+        where
+            a.order_seat_id = #{orderSeatId}
+    </select>
+
+    <select id="getViolateCount" resultType="java.lang.Integer">
+    SELECT
+	count(*)
+    FROM
+	order_violate_detail
+    WHERE
+    user_id = #{userId}
+    and
+	LEFT ( violate_time, 7 )= #{month}
+    </select>
+    <select id="getInBLCount" resultType="java.lang.Integer">
+    SELECT
+	count(*)
+    FROM
+	order_blacklist
+    WHERE
+	user_id = #{userId}
+	AND
+	 LEFT ( start_time, 7 )= #{month}
+    </select>
+
+
+</mapper>

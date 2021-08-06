@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.space.mapper.SpaceDeskMapper">
+
+    <select id="findListByRoomId" resultType="com.eseasky.modules.space.vo.request.SaveSeatVO">
+		SELECT
+			desk_id as seatId,
+			type,
+			canvas_state as state,
+			x,
+			y,
+			web_id as webId
+		FROM
+			space_desk
+		WHERE
+			room_id = #{roomId}
+		AND del_flag = 1
+    </select>
+    
+</mapper>

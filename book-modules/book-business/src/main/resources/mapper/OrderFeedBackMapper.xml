@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.order.mapper.OrderFeedBackMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.eseasky.modules.order.entity.OrderFeedBack">
+        <result column="feed_back_id" property="feedBackId" />
+        <result column="build_id" property="buildId" />
+        <result column="build_name" property="buildName" />
+        <result column="build_num" property="buildNum" />
+        <result column="floor_id" property="floorId" />
+        <result column="floor_num" property="floorNum" />
+        <result column="floor_name" property="floorName" />
+        <result column="roomId" property="roomId" />
+        <result column="room_name" property="roomName" />
+        <result column="room_num" property="roomNum" />
+        <result column="user_id" property="userId" />
+        <result column="type" property="type" />
+        <result column="state" property="state" />
+        <result column="content" property="content" />
+        <result column="create_user_id" property="createUserId" />
+        <result column="create_time" property="createTime" />
+        <result column="order_list_id" property="orderListId" />
+        <result column="update_user_id" property="updateUserId" />
+        <result column="update_time" property="updateTime" />
+        <result column="del_flag" property="delFlag" />
+    </resultMap>
+
+    <select id="getOrderFeedBackByIds" resultType="com.eseasky.modules.order.entity.OrderFeedBack">
+        SELECT
+        *
+        FROM
+        order_feed_back
+        WHERE
+        del_flag = '0'
+        <if test="ids.size() > 0">
+            and feed_back_id IN
+            <foreach collection="ids" open="(" item="item" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+
+    </select>
+
+</mapper>

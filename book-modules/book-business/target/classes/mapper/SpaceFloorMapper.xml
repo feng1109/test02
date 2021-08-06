@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.space.mapper.SpaceFloorMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="OneFloorManyRoom" type="com.eseasky.modules.space.entity.SpaceFloor">
+        <id column="floor_id" property="floorId" />
+        <result column="build_id" property="buildId" />
+        <result column="floor_num" property="floorNum" />
+        <result column="floor_name" property="floorName" />
+        <result column="floor_image" property="floorImage" />
+        <collection property="roomList" ofType="com.eseasky.modules.space.entity.SpaceRoom">
+	        <id column="r_room_id" property="roomId" />
+	        <result column="r_floor_id" property="floorId" />
+	        <result column="r_build_id" property="buildId" />
+	        <result column="r_room_name" property="roomName" />
+	        <result column="r_room_num" property="roomNum" />
+	        <result column="r_room_type" property="roomType" />
+	        <result column="r_room_image" property="roomImage" />
+	        <result column="r_area" property="area" />
+	        <result column="r_room_state" property="roomState" />
+	        <result column="r_conf_id" property="confId" />
+	        <result column="r_room_dept_id" property="roomDeptId" />
+	        <result column="r_seat_count" property="seatCount" />
+	        <result column="r_seat_not_forbid_count" property="seatNotForbidCount" />
+        </collection>
+    </resultMap>
+
+    <select id="findFloorList" resultMap="OneFloorManyRoom">
+		SELECT
+			f.floor_id,
+			f.build_id,
+			f.floor_num,
+			f.floor_name,
+			f.floor_image,
+			
+			r.room_id as r_room_id,
+			r.floor_id as r_floor_id,
+			r.build_id as r_build_id,
+			r.room_name as r_room_name,
+			r.room_num as r_room_num,
+			r.room_type as r_room_type,
+			r.room_image as r_room_image,
+			r.area as r_area,
+			r.room_state as r_room_state,
+			r.room_dept_id as r_room_dept_id,
+			r.seat_count as r_seat_count,
+			r.seat_not_forbid_count as r_seat_not_forbid_count
+		FROM space_floor f
+		LEFT JOIN space_room r ON f.floor_id = r.floor_id
+		WHERE
+			f.build_id = #{buildId}
+		AND r.room_name like concat('%', #{roomName}, '%')
+		AND f.del_flag = 1
+		AND r.del_flag = 1
+		ORDER by f.floor_num desc, r.room_num asc
+    </select>
+    
+    <!-- 综合楼、楼层一对一映射，不包含创建和更新的四个字段 -->
+    <select id="getOneBuildOneFloor" parameterType="String" resultType="com.eseasky.modules.space.vo.response.OneBOneF">
+		SELECT
+			b.build_id,
+			b.build_name,
+			b.build_num,
+			b.floor_count,
+			b.build_state,
+			b.conf_id build_conf_id,
+			
+			f.floor_id,
+			f.floor_num,
+			f.floor_name,
+			f.conf_id floor_conf_id
+		FROM space_build b
+		JOIN space_floor f ON b.build_id = f.build_id
+		WHERE
+			b.del_flag = 1
+			and f.del_flag = 1
+			and f.floor_id = #{floorId}
+    </select>
+    
+    <!-- 为批量导入房间接口查询综合楼和楼层信息 -->
+    <select id="getBuildAndFloorForExcel" resultType="com.eseasky.modules.space.vo.excel.ExcelOneBOneF">
+		SELECT
+			b.build_id,
+			b.build_name,
+			f.floor_id,
+			f.floor_name
+		FROM space_build b
+		JOIN space_floor f ON b.build_id = f.build_id
+		WHERE
+			b.del_flag = 1
+		AND f.del_flag = 1
+    </select>
+</mapper>

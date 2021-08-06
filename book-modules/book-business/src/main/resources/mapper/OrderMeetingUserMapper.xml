@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.order.mapper.OrderMeetingUserMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.eseasky.modules.order.entity.OrderMeetingUser">
+        <id column="id" property="id"/>
+        <result column="order_meeting_id" property="orderMeetingId"/>
+        <result column="order_meeting_info_id" property="orderMeetingInfoId"/>
+        <result column="user_id" property="userId"/>
+    </resultMap>
+    <sql id="resultMap">
+        id,order_meeting_id,order_meeting_info_id,user_id
+    </sql>
+    <insert id="batchInsert">
+        insert into order_meeting_user
+        (id,order_meeting_id,order_meeting_info_id,user_id)
+        values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.id},
+            #{item.orderMeetingId},
+            #{item.orderMeetingInfoId},
+            #{item.userId}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

@@ -1,0 +1,65 @@
+server:
+  port: 8089
+  servlet:
+    context-path: /
+
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      url: jdbc:mysql://139.9.90.142:3306/book?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+      username: esurvey
+      password: 131415
+      driver-class-name: com.mysql.jdbc.Driver
+      min-idle: 3
+      validation-query: SELECT 'x'
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      test-while-idle: true
+      test-on-borrow: true
+      test-on-return: false
+
+  redis:
+    host: 139.9.90.142
+    port: 6379
+    database: 1
+    password: 131415
+
+  rabbitmq:
+    host: 139.9.90.142
+    port: 5672
+    username: eseasky
+    password: eseasky@2021
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-attempts: 3
+          max-interval: 10000   # 重试最大间隔时间
+          initial-interval: 2000  # 重试初始间隔时间
+          multiplier: 2 # 间隔时间乘子，间隔时间*乘子=下一次的间隔时间，最大不能超过设置的最大间隔时间
+
+upload:
+  ftpIp: 139.9.90.142
+  ftpPort: 21
+  ftpUser: devuser
+  ftpPassword: Eseasky@8745u
+  ipPort: http://139.9.90.142:8083
+  imagePath: /usr/local/static/tenant/image/
+  imageProxyPath: /static/tenant/image/
+  imageType:
+    - png
+    - jpg
+  qrCodePath: /usr/local/static/qrcode/
+  qrCodeWidth: 300
+  qrCodeHeight: 300
+  zipPath: /usr/local/static/
+  roomTemplatePath: /usr/local/static/tenant/roomTemplate/
+  roomTemplateName: 空间批量导入模板.xls
+
+
+wx:
+  appid: wx59936acd7409af1c
+  secret: 4ddd11e4017e038cdb1945236f47ac8a
+  miniprogram_state: formal #developer为开发版；trial为体验版；formal为正式版；默认为正式版

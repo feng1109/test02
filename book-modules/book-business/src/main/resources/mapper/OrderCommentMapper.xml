@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.order.mapper.OrderCommentMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.eseasky.modules.order.entity.OrderComment">
+        <id column="order_comment_id" property="orderCommentId" />
+        <result column="order_list_id" property="orderListId" />
+        <result column="order_type" property="orderType" />
+        <result column="user_id" property="userId" />
+        <result column="user_name" property="userName" />
+        <result column="build_id" property="buildId" />
+        <result column="floor_id" property="floorId" />
+        <result column="room_id" property="roomId" />
+        <result column="clean_level" property="level" />
+        <result column="content" property="content" />
+        <result column="comment_time" property="commentTime" />
+    </resultMap>
+
+</mapper>

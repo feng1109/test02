@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.space.mapper.SpaceConfMapper">
+
+	<!-- 根据当前用户能够管理的部门id，获取对应的配置规则，不包括拼团 -->
+    <select id="getConfDropDown" resultType="com.eseasky.modules.space.vo.response.DropDownVO">
+		SELECT
+			conf_id AS `value`,
+			conf_name AS label
+		FROM
+			space_conf
+		WHERE is_group = 0
+		<if test="orgIdList.size()>0 ">
+			and (conf_dept_id IN
+			<foreach collection="orgIdList" item="orgId" index="index" open="(" close=")" separator=",">
+			    #{orgId}
+			</foreach> or c.conf_dept_id is null or c.conf_dept_id = '')
+		</if>
+		ORDER BY
+			create_time DESC
+    </select>
+    
+    <select id="findConfList" resultType="com.eseasky.modules.space.vo.response.QueryConfResult">
+		SELECT
+			c.conf_id,
+			c.conf_name,
+			c.conf_dept_id,
+			c.create_time,
+			c.order_type,
+			c.built_in,
+			u.username AS create_user,
+			o.org_name AS confDeptName
+		FROM
+			space_conf c
+		LEFT JOIN sys_user u ON c.create_user = u.id
+		LEFT JOIN sys_org o ON o.id = c.conf_dept_id
+		WHERE 1=1
+			<if test="orgIdList.size()>0 ">
+				AND (c.conf_dept_id IN
+				<foreach collection="orgIdList" item="orgId" index="index" open="(" close=")" separator=",">
+				    #{orgId}
+				</foreach> or c.conf_dept_id is null or c.conf_dept_id = '')
+			</if>
+			<if test="confName != null and confName != ''">
+				AND c.conf_name LIKE CONCAT('%', #{confName}, '%')
+			</if>		
+			<if test="orderType != null">
+				AND c.order_type = #{orderType}
+			</if>		
+			<if test="confDeptId != null and confDeptId != ''">
+				AND c.conf_dept_id = #{confDeptId}
+			</if>		
+		ORDER BY
+			c.create_time DESC
+    </select>
+    
+    
+    <!-- 根据规则，查询此规则正被哪些单位使用，conf_id不可能是内置规则 -->
+    <select id="findConfUsedList" resultType="com.eseasky.modules.space.vo.response.QueryConfUsedVO">
+		SELECT
+			tem.spaceId, tem.spaceType, tem.spaceName, tem.conf_id confId, tem.conf_time confTime, u.username confUser
+		FROM
+			(
+			SELECT build_id spaceId, 1 as spaceType, build_name spaceName, conf_id, conf_time, conf_user, build_id from space_build where conf_id = #{confId} AND del_flag = 1 UNION ALL
+			SELECT floor_id spaceId, 2 as spaceType, floor_name spaceName, conf_id, conf_time, conf_user, build_id from space_floor where conf_id = #{confId} AND del_flag = 1 UNION ALL
+			SELECT room_id spaceId, 3 as spaceType, room_name spaceName, conf_id, conf_time, conf_user, build_id from space_room where conf_id = #{confId} AND del_flag = 1 UNION ALL
+			SELECT seat_id spaceId, 4 as spaceType, seat_num spaceName, conf_id, conf_time, conf_user, build_id from space_seat where parent_conf = 4 AND conf_id = #{confId} AND del_flag = 1 UNION ALL
+			SELECT group_id spaceId, 5 as spaceType, group_name spaceName, conf_id, conf_time, conf_user, build_id from space_group where conf_id = #{confId} AND del_flag = 1
+			) tem
+		LEFT JOIN sys_user u ON tem.conf_user = u.id
+		<if test='spaceName != null and spaceName != ""'>
+			WHERE tem.spaceName LIKE CONCAT('%', #{spaceName}, '%') 
+		</if>
+		ORDER BY
+			tem.conf_time DESC
+    </select>
+    
+    
+    <!-- 查询所有规则被配置在哪些单位，查不到内置规则 -->
+    <select id="findConfInUsed" resultType="com.eseasky.modules.space.vo.response.QueryConfUsedVO">
+		SELECT build_id spaceId, 1 spaceType, conf_id confId from space_build where conf_id is not null AND conf_id != '' AND del_flag = 1 UNION ALL
+		SELECT floor_id spaceId, 2 spaceType, conf_id confId from space_floor where conf_id is not null AND conf_id != '' AND del_flag = 1 UNION ALL
+		SELECT room_id spaceId, 3 spaceType, conf_id confId from space_room where conf_id is not null AND conf_id != '' AND del_flag = 1 UNION ALL
+		SELECT seat_id spaceId, 4 spaceType, conf_id confId from space_seat where conf_id is not null AND conf_id != '' and parent_conf = 4 AND del_flag = 1 UNION ALL
+		SELECT group_id spaceId, 5 spaceType, conf_id confId from space_group where conf_id is not null AND conf_id != '' AND del_flag = 1
+    </select>
+    
+</mapper>

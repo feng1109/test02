@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.order.mapper.OrderMeetingInfoMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.eseasky.modules.order.entity.OrderMeetingInfo">
+        <id column="order_meeting_info_id" property="orderMeetingInfoId"/>
+        <result column="order_meeting_id" property="orderMeetingId"/>
+        <result column="user_id" property="userId"/>
+        <result column="user_name" property="userName"/>
+        <result column="user_start_time" property="userStartTime"/>
+        <result column="use_end_time" property="useEndTime"/>
+        <result column="theme" property="theme"/>
+        <result column="state" property="state"/>
+        <result column="meeting_state" property="meetingState"/>
+        <result column="order_type" property="orderType"/>
+        <result column="is_comment" property="isComment"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="attend_meeting_way" property="attendMeetingWay"/>
+        <result column="attend_meeting_people" property="attendMeetingPeople"/>
+        <result column="del_flag" property="delFlag"/>
+    </resultMap>
+    <sql id="ResultMap">
+        order_meeting_info_id,order_meeting_id,user_id,user_name,user_start_time,use_end_time,`state`,meeting_state,order_type,is_comment,attend_meeting_way,attend_meeting_people,theme,create_time,update_time,del_flag
+    </sql>
+    <insert id="batchInsert">
+        insert into order_meeting_info
+        (
+        order_meeting_info_id,order_meeting_id,user_id,user_name,user_start_time,use_end_time,`state`,meeting_state,order_type,is_comment,attend_meeting_way,attend_meeting_people,theme,create_time,update_time,del_flag
+        )
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.orderMeetingInfoId},
+            #{item.orderMeetingId},
+            #{item.userId},
+            #{item.userName},
+            #{item.userStartTime},
+            #{item.useEndTime},
+            #{item.state},
+            #{item.meetingState},
+            #{item.orderType},
+            #{item.isComment},
+            #{item.attendMeetingWay},
+            #{item.attendMeetingPeople},
+            #{item.theme},
+            #{item.createTime},
+            #{item.updateTime},
+            0)
+        </foreach>
+    </insert>
+    <select id="getCount" resultType="java.lang.Integer">
+        select count(*)
+        from order_meeting_info
+        <include refid="pageQuery"></include>
+    </select>
+
+    <select id="getDataList" resultMap="BaseResultMap">
+        select
+        <include refid="ResultMap"></include>
+        from order_meeting_info
+        <include refid="pageQuery"></include>
+        order by create_time desc
+        <if test="null != vo.pageNum and null != vo.pageSize">
+            limit #{vo.start},#{vo.end}
+        </if>
+    </select>
+
+    <select id="getLatestRecordByOrderMeetingIdAndUserId" resultMap="BaseResultMap">
+        SELECT
+            <include refid="ResultMap"></include>
+        FROM
+            order_meeting_info
+        WHERE
+            create_time = ( SELECT max( create_time ) FROM order_meeting_info WHERE order_meeting_id = #{orderMeetingId} )
+          AND order_meeting_id = #{orderMeetingId}
+    </select>
+
+    <select id="getOrderMeetingInfoByInfoId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="ResultMap"></include>
+        FROM
+        order_meeting_info
+        WHERE
+        order_meeting_info_id = #{orderMeetingInfoId}
+    </select>
+
+    <sql id="pageQuery">
+        where del_flag = 0
+        and user_id = #{vo.userId}
+        <if test="null != vo.orderType">
+            and order_type = #{vo.orderType}
+        </if>
+
+        <if test="null != vo.endTime">
+            and use_start_time &gt;= #{vo.endTime}
+        </if>
+    </sql>
+</mapper>

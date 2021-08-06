@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="false" scanPeriod="60 seconds" debug="false">
+    <property name="LOG_HOME" value="/log/" />
+    <property name="appName" value="book"></property>
+
+    <!-- 控制台输出日志 -->
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} ----> [%thread] ---> %-5level %logger{50} - %msg%n</pattern>
+        </layout>
+    </appender>
+
+    <!-- 文件输出日志  -->
+    <appender name="book" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${appName}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/${appName}-%d{yyyy-MM-dd}-%i.log</fileNamePattern>
+            <MaxHistory>3</MaxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>5MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <!-- 日志输出格式： -->
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [ %thread ] - [ %-5level ] [ %logger{50} : %line ] - %msg%n</pattern>
+        </layout>
+    </appender>
+
+    <!-- Spring framework logger -->
+    <logger name="org.springframework" level="info" additivity="true"></logger>
+    <!-- mybatis logger -->
+    <logger name="java.sql.Connection" level="ERROR" />
+    <logger name="java.sql.PreparedStatement" level="ERROR" />
+    <logger name="com.eseasky.modules" level="DEBUG" />
+    <logger name="com.eseasky.common.dao" level="DEBUG" />
+    <root level="info">
+        <appender-ref ref="stdout" />
+        <appender-ref ref="book" />
+    </root>
+</configuration>

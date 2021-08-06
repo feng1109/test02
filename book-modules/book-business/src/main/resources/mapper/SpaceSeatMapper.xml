@@ -1,0 +1,538 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.space.mapper.SpaceSeatMapper">
+
+    <select id="findListByRoomId" resultType="com.eseasky.modules.space.vo.request.SaveSeatVO">
+		SELECT
+			seat_id seatId,
+			type,
+			seat_state AS state,
+			parent_state AS parentState,
+			seat_num AS seatNum,
+			x,
+			y,
+			conf_id confId,
+			seat_group_id seatGroupId,
+			web_id as webId
+		FROM
+			space_seat
+		WHERE
+			room_id = #{roomId}
+			AND del_flag = 1
+    </select>
+    
+    
+    <!-- 统计中心，获取当前时间点正在使用的座位 -->
+    <select id="getInUsedSeatForStatistic" resultType="com.alibaba.fastjson.JSONObject">
+		SELECT
+			seat_id seatId,
+			list_state listState,
+			'' seatGroupId
+		FROM
+			order_seat_list
+		WHERE
+			room_id = #{roomId}
+		AND #{startDate} &lt; order_end_time
+		AND list_state IN (2, 3)
+		UNION ALL
+		SELECT
+			'' seatId,
+			'' listState,
+			seat_group_id seatGroupId
+		FROM
+			order_group_list
+		WHERE
+			room_id = #{roomId}
+		AND #{startDate} &lt; order_end_time
+		AND list_state IN (3)
+    </select>
+    
+    
+    
+    <!-- 根据空间ids，判断这些座位在时间点是否被占用，可能提前签到 -->
+    <select id="getOrderedSeatByRoomIds" resultType="com.alibaba.fastjson.JSONObject">
+		SELECT
+			room_id roomId,
+			count(room_id) seatInUsedCount
+		FROM
+			space_seat
+		WHERE
+			seat_id IN (
+				SELECT
+					seat_id
+				FROM
+					order_seat_list
+				WHERE
+					room_id IN
+					<foreach collection="roomIdList" item="roomId" index="index" open="(" close=")" separator=",">
+					    #{roomId}
+					</foreach>
+				AND #{startDate} &lt; order_end_time
+				AND list_state IN (2, 3)	<!-- 单人短租、单人长租，某个时间段座位未释放：1待签到、2使用中、3暂离、12待审批 -->
+			)
+		OR seat_group_id IN (
+			SELECT
+				seat_group_id
+			FROM
+				order_group_list
+			WHERE
+				room_id IN
+				<foreach collection="roomIdList" item="roomId" index="index" open="(" close=")" separator=",">
+				    #{roomId}
+				</foreach>
+			AND #{startDate} &lt; order_end_time
+			AND list_state IN (3)			<!-- 拼团，某个时间段座位组未释放：1拼团中，3使用中 -->
+		)
+		GROUP BY
+			room_id
+    </select>
+    
+    <!-- 根据空间ids，判断这些空间在时间点是否被占用 -->
+    <select id="getMeetingRoomInUsedList" resultType="string">
+		SELECT
+			room_id
+		FROM
+			order_meeting_list
+		WHERE
+			room_id IN
+			<foreach collection="roomIdList" item="roomId" index="index" open="(" close=")" separator=",">
+			    #{roomId}
+			</foreach>
+		AND #{startDate} &lt; order_end_time
+		AND state IN (2)
+    </select>
+    
+    
+    
+    
+    <!-- 单人长租和短租，只用于综合楼。可预约confId、可见seat、非删除seat，并且是分页buildId，排除时间段内占用的seatId -->
+    <select id="singleOrderForBuild" resultType="com.alibaba.fastjson.JSONObject">
+		SELECT
+			build_id buildId, COUNT(build_id) seatNotUsedTotal
+		FROM space_seat
+		WHERE
+			conf_id IN
+			<foreach collection="freeList" item="confId" index="index" open="(" close=")" separator=",">
+			    #{confId}
+			</foreach>
+		AND seat_state = 1
+		AND del_flag = 1
+		AND build_id IN
+			<foreach collection="buildIdList" item="buildId" index="index" open="(" close=")" separator=",">
+			    #{buildId}
+			</foreach>
+		<if test='orderType == 1 or orderType == 2'>
+			AND seat_id NOT IN (
+				SELECT 
+					seat_id
+				FROM 
+					order_seat_list
+				WHERE
+					build_id IN
+						<foreach collection="buildIdList" item="buildId" index="index" open="(" close=")" separator=",">
+						    #{buildId}
+						</foreach>
+				AND list_state IN (1, 2, 3, 12)		<!-- 单人短租、单人长租，某个时间段座位未释放：1待签到、2使用中、3暂离、12待审批 -->
+				AND (
+					(
+							#{startDate} &gt;= order_start_time
+						AND #{startDate} &lt;  order_end_time
+					)
+					OR (
+							#{endDate} &gt; order_start_time
+						AND #{endDate} &lt;= order_end_time
+					)
+				)
+			)
+		</if>
+		<if test='orderType == 5'>
+			AND seat_group_id NOT IN (
+				SELECT 
+					seat_group_id
+				FROM 
+					order_group_list
+				WHERE
+					build_id IN
+						<foreach collection="buildIdList" item="buildId" index="index" open="(" close=")" separator=",">
+						    #{buildId}
+						</foreach>
+				AND list_state IN (1, 3)		<!-- 拼团，某个时间段座位组未释放：1拼团中，3使用中 -->
+				AND (
+					(
+							#{startDate} &gt;= order_start_time
+						AND #{startDate} &lt;  order_end_time
+					)
+					OR (
+							#{endDate} &gt; order_start_time
+						AND #{endDate} &lt;= order_end_time
+					)
+				)
+			)
+		</if>
+		GROUP BY
+			build_id
+    </select>
+
+    <!-- 会议室长租和短租，只用于综合楼。可预约confId、可见seat、非删除seat，并且是分页buildId，排除时间段内占用的roomId -->
+    <select id="multiOrderForBuild" resultType="com.alibaba.fastjson.JSONObject">
+		SELECT
+			build_id buildId, COUNT(build_id) roomNotUsedTotal
+		FROM
+	    	(
+				SELECT
+					 DISTINCT build_id, room_id
+				FROM space_seat
+				WHERE
+					conf_id IN
+					<foreach collection="freeList" item="confId" index="index" open="(" close=")" separator=",">
+					    #{confId}
+					</foreach>
+				AND seat_state = 1
+				AND del_flag = 1
+				AND build_id IN
+					<foreach collection="buildIdList" item="buildId" index="index" open="(" close=")" separator=",">
+					    #{buildId}
+					</foreach>
+				AND room_id NOT IN (
+					SELECT 
+						room_id
+					FROM 
+						order_meeting_list
+					WHERE
+						build_id IN
+							<foreach collection="buildIdList" item="buildId" index="index" open="(" close=")" separator=",">
+							    #{buildId}
+							</foreach>
+					AND state IN (1, 2, 12)		<!-- 会议室长租和短租，某个时间段空间未释放：1待开始、2进行中、12待审批 -->
+					AND (
+						(
+								#{startDate} &gt;= order_start_time
+							AND #{startDate} &lt;  order_end_time
+						)
+						OR (
+								#{endDate} &gt; order_start_time
+							AND #{endDate} &lt;= order_end_time
+						)
+					)
+				)
+			) tem
+		GROUP BY
+			build_id
+    </select>
+
+   
+    <!-- 单人长租和短租，只用于房间。可预约confId、可见seat、非删除seat、指定buildId，排除时间段内占用的seatId -->
+    <select id="singleOrderForRoom" resultType="com.alibaba.fastjson.JSONObject">
+		SELECT
+			room_id roomId, COUNT(room_id) seatNotUsedTotal
+		FROM space_seat
+		WHERE
+			conf_id IN
+			<foreach collection="freeList" item="confId" index="index" open="(" close=")" separator=",">
+			    #{confId}
+			</foreach>
+		AND seat_state = 1
+		AND del_flag = 1
+		AND build_id = #{buildId}
+		<if test='orderType == 1 or orderType == 2'>
+			AND seat_id NOT IN (
+				SELECT 
+					seat_id
+				FROM 
+					order_seat_list
+				WHERE
+					build_id = #{buildId}
+				AND list_state IN (1, 2, 3, 12)		<!-- 单人短租、单人长租，某个时间段座位未释放：1待签到、2使用中、3暂离、12待审批 -->
+				AND (
+					(
+							#{startDate} &gt;= order_start_time
+						AND #{startDate} &lt;  order_end_time
+					)
+					OR (
+							#{endDate} &gt; order_start_time
+						AND #{endDate} &lt;= order_end_time
+					)
+				)
+			)
+		</if>
+		<if test='orderType == 5'>
+			AND seat_group_id NOT IN (
+				SELECT 
+					seat_group_id
+				FROM 
+					order_group_list
+				WHERE
+					build_id = #{buildId}
+				AND list_state IN (1, 3)		<!-- 拼团，某个时间段座位组未释放：1拼团中，3使用中 -->
+				AND (
+					(
+							#{startDate} &gt;= order_start_time
+						AND #{startDate} &lt;  order_end_time
+					)
+					OR (
+							#{endDate} &gt; order_start_time
+						AND #{endDate} &lt;= order_end_time
+					)
+				)
+			)
+		</if>
+		GROUP BY
+			room_id
+    </select>
+    
+
+    <!-- 会议室长租和短租，只用于房间。可预约confId、可见seat、非删除seat、指定buildId，排除时间段内占用的roomId -->
+    <select id="multiOrderForRoom" resultType="com.alibaba.fastjson.JSONObject">
+		SELECT
+			room_id roomId, COUNT(room_id) seatNotUsedTotal
+		FROM space_seat
+		WHERE
+			conf_id IN
+			<foreach collection="freeList" item="confId" index="index" open="(" close=")" separator=",">
+			    #{confId}
+			</foreach>
+		AND seat_state = 1
+		AND del_flag = 1
+		AND build_id = #{buildId}
+		AND room_id NOT IN (
+			SELECT 
+				room_id
+			FROM 
+				order_meeting_list
+			WHERE
+				build_id = #{buildId}
+			AND state IN (1, 2, 12)		<!-- 会议室长租和短租，某个时间段空间未释放：1待开始、2进行中、12待审批 -->
+			AND (
+				(
+						#{startDate} &gt;= order_start_time
+					AND #{startDate} &lt;  order_end_time
+				)
+				OR (
+						#{endDate} &gt; order_start_time
+					AND #{endDate} &lt;= order_end_time
+				)
+			)
+		)
+		GROUP BY
+			room_id
+    </select>   
+
+    <!-- 单人长租和短租，没有拼团，只用于座位。可预约confId、可见seat、非删除seat、指定roomId，排除时间段内占用的seatId -->
+    <select id="singleOrderForSeat" resultType="string">
+		SELECT
+			seat_id
+		FROM space_seat
+		WHERE
+			conf_id IN
+			<foreach collection="freeList" item="confId" index="index" open="(" close=")" separator=",">
+			    #{confId}
+			</foreach>
+		AND seat_state = 1
+		AND del_flag = 1
+		AND room_id = #{roomId}
+		AND seat_id NOT IN (
+			SELECT 
+				seat_id
+			FROM 
+				order_seat_list
+			WHERE
+				room_id = #{roomId}
+			AND list_state IN (1, 2, 3, 12)		<!-- 单人短租、单人长租，某个时间段座位未释放：1待签到、2使用中、3暂离、12待审批 -->
+			AND (
+				(
+						#{startDate} &gt;= order_start_time
+					AND #{startDate} &lt;  order_end_time
+				)
+				OR (
+						#{endDate} &gt; order_start_time
+					AND #{endDate} &lt;= order_end_time
+				)
+			)
+		)
+    </select>   
+
+    <!-- 拼团，根据roomId查询可用groupId，排除时间段内占用的groupId -->
+    <select id="groupOrderForSeat" resultType="com.eseasky.modules.space.entity.SpaceSeat">
+		SELECT
+			seat_id, seat_num, seat_group_id, seat_state
+		FROM space_seat
+		WHERE
+			conf_id IN
+			<foreach collection="freeList" item="confId" index="index" open="(" close=")" separator=",">
+			    #{confId}
+			</foreach>
+		AND seat_state = 1
+		AND del_flag = 1
+		AND	room_id = #{roomId}
+		AND seat_group_id NOT IN (
+			SELECT 
+				seat_group_id
+			FROM 
+				order_group_list
+			WHERE
+				room_id = #{roomId}
+			AND list_state IN (1, 3)		<!-- 拼团，某个时间段座位组未释放：1拼团中，3使用中 -->
+			AND (
+				(
+						#{startDate} &gt;= order_start_time
+					AND #{startDate} &lt;  order_end_time
+				)
+				OR (
+						#{endDate} &gt; order_start_time
+					AND #{endDate} &lt;= order_end_time
+				)
+			)
+		)
+		ORDER BY
+			seat_num
+    </select>   
+    
+    
+
+	<!-- 为订单获取座位信息，非删除，非禁用 -->
+    <select id="getSeatInfoForOrder" parameterType="String" resultType="com.eseasky.modules.space.vo.response.SeatInfoToOrder">
+		SELECT
+			b.build_id,
+			b.build_name,
+			b.build_state,
+			b.build_dept_id,
+			f.floor_id,
+			f.floor_num,
+			f.floor_name,
+			r.room_id,
+			r.room_name,
+			r.room_num,
+			r.room_state,
+			s.seat_id,
+			s.seat_num,
+			s.seat_state,
+			s.conf_id
+		FROM
+			space_build b
+		JOIN space_floor f ON f.build_id = b.build_id
+		JOIN space_room r ON f.floor_id = r.floor_id
+		JOIN space_seat s ON s.room_id = r.room_id
+		WHERE
+			s.seat_state = 1
+		AND s.del_flag = 1
+		AND s.seat_id = #{seatId}
+    </select> 
+    
+    
+    
+	<!-- 为订单获取座位组信息，非删除 -->
+    <select id="getGroupInfoForOrder" parameterType="String" resultType="com.eseasky.modules.space.vo.response.SeatInfoToOrder">
+		SELECT
+			b.build_id,
+			b.build_name,
+			b.build_state,
+			b.build_dept_id,
+			f.floor_id,
+			f.floor_num,
+			r.room_id,
+			r.room_name,
+			r.room_num,
+			r.room_state,
+			p.group_id,
+			p.group_name,
+			p.conf_id
+		FROM
+			space_build b
+		JOIN space_floor f ON f.build_id = b.build_id
+		JOIN space_room r ON f.floor_id = r.floor_id
+		JOIN space_group p ON p.room_id = r.room_id
+		WHERE
+			p.group_id = #{groupId}
+		AND p.del_flag = 1
+    </select> 
+    
+    
+    <!-- 为手机端获取座位信息 -->
+    <select id="getSeatInfoForQuickOrder" parameterType="String" resultType="com.eseasky.modules.space.vo.response.SeatInfoForQuickOrder">
+		SELECT
+			b.build_id,
+			b.build_name,
+			b.build_state,
+			
+			f.floor_id,
+			f.floor_num,
+			f.floor_name,
+			
+			r.room_id,
+			r.room_name,
+			r.room_num,
+			r.room_state,
+			r.conf_id,
+			
+			s.seat_id,
+			s.seat_num,
+			s.seat_state
+		FROM
+			space_build b
+		JOIN space_floor f ON f.build_id = b.build_id
+		JOIN space_room r ON f.floor_id = r.floor_id
+		JOIN space_seat s ON s.room_id = r.room_id
+		WHERE
+			s.seat_state = 1
+		AND s.del_flag = 1
+		AND s.seat_id = #{seatId}
+    </select>
+    
+    
+    <!-- 为快速预约获取一个座位id -->
+    <select id="getSeatIdForQuickOrder" resultType="string">
+		SELECT
+			seat_id
+		FROM
+			space_seat
+		WHERE
+			conf_id IN
+			<foreach collection="freeList" item="confId" index="index" open="(" close=")" separator=",">
+			    #{confId}
+			</foreach>
+		AND del_flag = 1
+		AND seat_state = 1
+		AND build_id = #{buildId}
+		AND seat_id NOT IN (
+				SELECT 
+					seat_id
+				FROM 
+					order_seat_list
+				WHERE
+					build_id = #{buildId}
+				AND list_state IN (1, 2, 3, 12)		<!-- 单人短租、单人长租，某个时间段座位未释放：1待签到、2使用中、3暂离、12待审批 -->
+				AND (
+					(
+							#{startDate} &gt;= order_start_time
+						AND #{startDate} &lt;  order_end_time
+					)
+					OR (
+							#{endDate} &gt; order_start_time
+						AND #{endDate} &lt;= order_end_time
+					)
+				)
+			)
+		AND seat_group_id NOT IN (
+			SELECT 
+				seat_group_id
+			FROM 
+				order_group_list
+			WHERE
+				build_id = #{buildId}
+			AND list_state IN (1, 3)		<!-- 拼团，某个时间段座位组未释放：1拼团中，3使用中 -->
+			AND (
+				(
+						#{startDate} &gt;= order_start_time
+					AND #{startDate} &lt;  order_end_time
+				)
+				OR (
+						#{endDate} &gt; order_start_time
+					AND #{endDate} &lt;= order_end_time
+				)
+			)
+		)
+		LIMIT 1
+    </select>  
+    
+    
+</mapper>

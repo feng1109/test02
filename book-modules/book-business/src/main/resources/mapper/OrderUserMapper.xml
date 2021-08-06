@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.order.mapper.OrderUserMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.eseasky.modules.order.entity.OrderUser">
+        <id column="order_user_id" property="orderUserId" />
+        <result column="user_id" property="userId" />
+        <result column="org_id" property="orgId" />
+        <result column="learn_total_time" property="learnTotalTime" />
+        <result column="week_learn_time" property="weekLearnTime" />
+        <result column="learn_max_time" property="learnMaxTime" />
+        <result column="violate_count" property="violateCount" />
+        <result column="cancel_count" property="cancelCount" />
+        <result column="blacklist_end_time" property="blacklistEndTime" />
+        <result column="in_blacklist_count" property="inBlacklistCount" />
+        <result column="order_count" property="orderCount"/>
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+        <result column="del_flag" property="delFlag" />
+    </resultMap>
+
+</mapper>

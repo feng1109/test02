@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.order.mapper.OrderGroupListMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.eseasky.modules.order.entity.OrderGroupList">
+        <id column="order_group_id" property="orderGroupId" />
+        <result column="list_no" property="listNo" />
+        <result column="build_id" property="buildId" />
+        <result column="floor_id" property="floorId" />
+        <result column="room_id" property="roomId" />
+        <result column="seat_group_id" property="seatGroupId" />
+        <result column="user_id" property="userId" />
+        <result column="user_name" property="userName" />
+        <result column="user_org_id" property="userOrgId" />
+        <result column="user_org_name" property="userOrgName" />
+        <result column="build_org_id" property="buildOrgId" />
+        <result column="seat_count" property="seatCount" />
+        <result column="user_count" property="userCount" />
+        <result column="order_type" property="orderType" />
+        <result column="list_state" property="listState" />
+        <result column="launch_time" property="launchTime" />
+        <result column="team_time" property="teamTime" />
+        <result column="cut_off_time" property="cutOffTime" />
+        <result column="order_start_time" property="orderStartTime" />
+        <result column="order_end_time" property="orderEndTime" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+        <result column="del_flag" property="delFlag" />
+    </resultMap>
+
+    <select id="getSeatGroupRepeat" resultType="java.lang.Integer" parameterType="OrderGroupList">
+        SELECT
+        count(*) count
+        FROM
+        order_group_list a
+        WHERE
+        a.seat_group_id = #{seatGroupId}
+        AND del_flag = '0'
+        AND a.list_state IN ( 1, 3 )
+        AND ((
+        a.order_start_time > #{orderStartTime}
+        AND a.order_start_time &gt; #{orderEndTime} )
+        OR ( a.order_end_time > #{orderStartTime}
+        AND a.order_end_time &gt; #{orderEndTime}
+        ))
+    </select>
+
+
+    <select id="getInviteGroupInfo" resultType="GroupInviteRepVO">
+SELECT
+    a.order_group_id,
+    a.seat_group_id,
+	a.user_name userName,
+	a.order_start_time,
+	a.order_end_time,
+	b.build_name buildName,
+	c.floor_num floorNum,
+	d.room_name roomName,
+	d.room_num roomNum,
+	a.list_state list_state,
+	a.cut_off_time,
+	a.seat_count,
+	5 order_type,
+	e.group_name groupName
+FROM
+	order_group_list a
+	LEFT JOIN space_build b ON a.build_id = b.build_id
+	LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+	LEFT JOIN space_room d ON a.room_id = d.room_id
+	left Join space_group e on a.seat_group_id = e.group_id
+WHERE
+	a.order_group_id = #{orderGroupId}
+	AND a.del_flag = '0'
+    </select>
+
+
+    <select id="getOrderGroupListDetailed" resultType="OrderGroupListDetailedDTO">
+        SELECT
+            a.*,
+            b.build_name buildName,
+            b.build_num buildNum,
+            c.floor_name floorName,
+            c.floor_num floorNum,
+            d.room_name roomName,
+            d.room_num roomNum
+        FROM
+            order_group_list a
+                LEFT JOIN space_build b ON a.build_id = b.build_id
+                LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+                LEFT JOIN space_room d ON a.room_id = d.room_id
+                left Join space_group e on a.seat_group_id = e.group_id
+        WHERE
+            a.order_group_id = #{orderGroupId}
+          AND a.del_flag = '0'
+    </select>
+
+
+</mapper>

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.space.mapper.SpaceRoomMapper">
+
+    <!-- 三表关联，多添件查询空间列表，以空间为主，不能LEFT JOIN space_room -->
+    <select id="findRoomList" resultType="com.eseasky.modules.space.vo.response.OneBOneFOneR">
+		SELECT
+			b.build_id,
+			b.build_name,
+			b.build_num,
+			b.floor_count,
+			b.build_state,
+			b.conf_id build_conf_id,
+			
+			f.floor_id,
+			f.floor_num,
+			f.floor_name,
+			f.conf_id floor_conf_id,
+			
+			r.room_id,
+			r.room_name,
+			r.room_num,
+			r.room_image,
+			r.area,
+			r.room_state,
+			r.conf_id room_conf_id,
+			r.seat_count,
+			r.seat_not_forbid_count
+		FROM space_build b
+		JOIN space_floor f ON b.build_id = f.build_id
+		JOIN space_room r ON f.floor_id = r.floor_id
+		where 
+				b.del_flag = 1
+			AND f.del_flag = 1 
+			AND r.del_flag = 1
+		<if test="orgIdList.size()>0 ">
+			AND b.build_dept_id IN
+				<foreach collection="orgIdList" item="orgId" index="index" open="(" close=")" separator=",">
+				    #{orgId}
+				</foreach>
+		</if>
+		<if test="buildId != null and buildId != ''">
+			AND b.build_id = #{buildId}
+			<if test="floorId != null and floorId != ''">
+				AND f.floor_id = #{floorId}
+			</if>
+		</if>
+		<if test="roomName != null and roomName != ''">
+			AND r.room_name like concat('%', #{roomName}, '%')
+		</if>
+		<choose>
+			<when test="buildId != null and buildId != '' and floorId != null and floorId != ''">
+				order by r.room_num asc
+			</when>
+			<when test="buildId != null and buildId != '' and (floorId == null or floorId == '')">
+				order by f.floor_num asc, r.room_num asc
+			</when>
+			<when test="buildId == null or buildId == ''">
+				order by b.build_num asc, f.floor_num asc, r.room_num asc
+			</when>
+		</choose>
+    </select>
+
+    <!-- 综合楼、楼层、空间一对一映射 -->
+    <select id="getOneBuildOneFloorOneRoom" parameterType="String" resultType="com.eseasky.modules.space.vo.response.OneBOneFOneR">
+		SELECT
+			b.build_id,
+			b.build_name,
+			b.build_num,
+			b.floor_count,
+			b.build_state,
+			b.conf_id build_conf_id,
+			
+			f.floor_id,
+			f.floor_num,
+			f.floor_name,
+			f.conf_id floor_conf_id,
+			
+			r.room_id,
+			r.room_name,
+			r.room_num,
+			r.room_image,
+			r.room_state,
+			r.conf_id room_conf_id,
+			r.seat_count,
+			r.seat_not_forbid_count
+		FROM space_build b
+		JOIN space_floor f ON b.build_id = f.build_id
+		JOIN space_room r ON f.floor_id = r.floor_id
+		WHERE
+				b.del_flag = 1 
+			and f.del_flag = 1 
+			and r.del_flag = 1
+			and r.room_id = #{roomId}
+    </select>
+    
+</mapper>

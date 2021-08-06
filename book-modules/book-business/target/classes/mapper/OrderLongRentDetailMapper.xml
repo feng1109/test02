@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.order.mapper.OrderLongRentDetailMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.eseasky.modules.order.entity.OrderLongRentDetail">
+        <id column="order_long_detail_Id" property="orderLongDetailId" />
+        <result column="order_seat_id" property="orderSeatId" />
+        <result column="user_id" property="userId" />
+        <result column="use_day" property="useDay" />
+        <result column="is_leave" property="isLeave" />
+        <result column="list_use_time" property="listUseTime"/>
+        <result column="use_start_time" property="useStartTime" />
+        <result column="use_end_time" property="useEndTime" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+        <result column="del_flag" property="delFlag" />
+    </resultMap>
+
+</mapper>

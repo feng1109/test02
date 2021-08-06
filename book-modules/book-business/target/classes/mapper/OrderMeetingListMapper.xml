@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.order.mapper.OrderMeetingListMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.eseasky.modules.order.entity.OrderMeetingList">
+        <id column="order_meeting_id" property="orderMeetingId" />
+        <id column="order_meeting_info_id" property="orderMeetingInfoId" />
+        <result column="create_user_id" property="createUserId" />
+        <result column="create_user_name" property="createUserName" />
+        <result column="create_time" property="createTime" />
+        <result column="update_user_id" property="updateUserId" />
+        <result column="update_user_name" property="updateUserName" />
+        <result column="update_time" property="updateTime" />
+        <result column="order_no" property="orderNo" />
+        <result column="build_id" property="buildId" />
+        <result column="floor_id" property="floorId" />
+        <result column="room_id" property="roomId" />
+        <result column="user_id" property="userId" />
+        <result column="user_name" property="userName" />
+        <result column="user_phone" property="userPhone" />
+        <result column="user_no" property="userNo" />
+        <result column="user_type" property="userType" />
+        <result column="user_wechat" property="userWechat" />
+        <result column="order_type" property="orderType" />
+        <result column="state" property="state" />
+        <result column="continue_count" property="continueCount" />
+        <result column="renew_limit_time" property="renewLimitTime" />
+        <result column="is_advance_cancel" property="isAdvanceCancel" />
+        <result column="is_require_approval" property="isRequireApproval" />
+        <result column="is_late" property="isLate" />
+        <result column="is_advance_leave" property="isAdvanceLeave" />
+        <result column="order_start_time" property="orderStartTime" />
+        <result column="order_end_time" property="orderEndTime" />
+        <result column="use_start_time" property="useStartTime" />
+        <result column="use_end_time" property="useEndTime" />
+        <result column="is_comment" property="isComment" />
+        <result column="user_org_id" property="userOrgId" />
+        <result column="user_org_name" property="userOrgName" />
+        <result column="theme" property="theme" />
+        <result column="attend_meeting_way" property="attendMeetingWay" />
+        <result column="attend_meeting_people" property="attendMeetingPeople" />
+        <result column="del_flag" property="delFlag" />
+    </resultMap>
+
+    <select id="getExistOrderCount" resultType="java.lang.Integer">
+        SELECT
+        count( * )
+        FROM
+        order_meeting_list
+        WHERE
+        (
+        (order_start_time &gt; #{startTime} AND order_start_time &lt;= #{endTime})
+        OR (order_end_time &gt; #{startTime} AND order_end_time &lt;= #{endTime})
+        OR (order_start_time &lt;= #{startTime} AND order_end_time &gt; #{endTime})
+        )
+        AND state IN
+        <foreach collection="stateList" open="(" item="item" separator="," close=")">
+            #{item}
+        </foreach>
+        AND user_id = #{userId}
+        AND order_type = #{orderType}
+    </select>
+
+    <select id="getRoomRepeat" resultType="java.lang.Integer">
+        SELECT
+        count( * )
+        FROM
+        order_meeting_list
+        WHERE
+        (
+        (order_start_time &gt; #{startTime} AND order_start_time &lt;= #{endTime})
+        OR (order_end_time &gt; #{startTime} AND order_end_time &lt;= #{endTime})
+        OR (order_start_time &lt;= #{startTime} AND order_end_time &gt; #{endTime})
+        )
+        AND state IN
+        <foreach collection="stateList" open="(" item="item" separator="," close=")">
+            #{item}
+        </foreach>
+        AND room_id = #{roomId}
+    </select>
+
+    <select id="getDataList" parameterType="UserListReqVO" resultType="UserMeetingListRepVO">
+        SELECT
+        a.order_meeting_id,
+        a.order_meeting_info_id,
+        a.order_type,
+        a.order_start_time,
+        a.order_end_time,
+        a.use_start_time,
+        a.use_end_time,
+        a.order_type orderType,
+        a.use_time useTime,
+        a.state `state`,
+        a.user_id userId,
+        a.order_start_time orderStartTime,
+        a.order_end_time orderEndTime,
+        a.room_id roomId,
+        a.is_comment isComment,
+        b.build_name buildName,
+        c.floor_num floorNum,
+        d.room_name roomName,
+        d.room_num roomNum
+        FROM
+        order_meeting_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+
+        <include refid="queryMeetingSql"></include>
+        order by a.create_time desc
+        <if test="vo.pageNum != null and vo.pageSize != null">
+            limit #{vo.start},#{vo.end}
+        </if>
+    </select>
+
+    <select id="getCount" resultType="java.lang.Integer">
+        select count(1)
+        from order_meeting_list a
+        <include refid="queryMeetingSql"></include>
+    </select>
+
+    <sql id="queryMeetingSql">
+        <where>
+            <if test="vo.userId != null">
+                and a.user_id = #{vo.userId}
+            </if>
+            <if test="vo.endTime != null ">
+                and a.order_start_time &gt;= #{vo.endTime}
+            </if>
+            <if test="vo.orderType != null ">
+                and a.order_type = #{vo.orderType}
+            </if>
+        </where>
+    </sql>
+
+
+    <select id="getOrderDetail" resultType="com.eseasky.modules.order.vo.response.OrderMeetingListDetailRepVO" parameterType="string">
+        SELECT
+            a.order_meeting_id,
+            a.order_meeting_info_id,
+            a.order_no,
+            a.user_id,
+            a.user_name,
+            a.order_type orderType,
+            a.attend_meeting_people attendMeetingPeopleStr,
+            a.state `state`,
+            a.room_id roomId,
+            a.theme theme,
+            a.create_time createTime,
+            a.order_start_time orderStartTime,
+            a.order_end_time orderEndTime,
+            a.use_start_time useStartTime,
+            a.use_end_time useEndTime,
+            a.build_id buildId,
+            b.build_name buildName,
+            b.build_num buildNum,
+            a.floor_id floorId,
+            c.floor_name floorName,
+            c.floor_num floorNum,
+            a.room_id roomId,
+            d.room_name roomName,
+            d.room_num roomNum
+        FROM
+            order_meeting_list a
+                LEFT JOIN space_build b ON a.build_id = b.build_id
+                LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+                LEFT JOIN space_room d ON a.room_id = d.room_id
+        WHERE
+            a.order_meeting_id = #{orderId}
+    </select>
+
+
+    <select id="getClockInfo" resultType="com.eseasky.modules.order.vo.response.MeetingClockRepVO">
+        SELECT
+            a.order_meeting_id,
+            a.order_meeting_info_id,
+            a.order_type,
+            a.order_start_time,
+            a.order_end_time,
+            a.order_type orderType,
+            a.state `state`,
+            a.use_start_time,
+            a.use_end_time,
+            a.order_start_time orderStartTime,
+            a.order_end_time orderEndTime,
+            a.room_id roomId,
+            b.coordx,
+            b.coordy,
+            b.build_name buildName,
+            c.floor_num floorNum,
+            d.room_name roomName,
+            d.room_num roomNum
+        FROM
+            order_meeting_list a
+                LEFT JOIN space_build b ON a.build_id = b.build_id
+                LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        where a.del_flag = '0'
+        and a.order_meeting_id in
+        <foreach collection="ids" open="(" item="item" separator="," close=")">
+            #{item}
+        </foreach>
+        AND a.state in (1,2)
+        AND a.order_start_time &lt;= #{startTime}
+    </select>
+
+    <select id="getOrderMeetingVoByIds" resultType="UserMeetingListRepVO">
+        SELECT
+        a.order_meeting_id,
+        a.order_meeting_info_id,
+        a.order_type,
+        a.order_start_time,
+        a.order_end_time,
+        a.use_start_time,
+        a.use_end_time,
+        a.order_type orderType,
+        a.state `state`,
+        a.user_id userId,
+        a.order_start_time orderStartTime,
+        a.order_end_time orderEndTime,
+        a.room_id roomId,
+        a.is_comment isComment,
+        b.build_name buildName,
+        c.floor_num floorNum,
+        d.room_name roomName,
+        d.room_num roomNum
+        FROM
+        order_meeting_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        where del_flag = '0'
+        <if test="ids.size() != 0">
+            and order_meeting_id in
+            <foreach collection="ids" open="(" item="item" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        order by a.create_time desc
+    </select>
+
+    <select id="getShortClockInfoByDate" resultType="com.eseasky.modules.order.vo.response.MeetingClockRepVO">
+        SELECT
+        a.order_meeting_id,
+        a.order_meeting_info_id,
+        a.order_type,
+        a.order_start_time,
+        a.order_end_time,
+        a.order_type orderType,
+        a.state `state`,
+        a.use_time useTime,
+        a.use_start_time,
+        a.use_end_time,
+        a.order_start_time orderStartTime,
+        a.order_end_time orderEndTime,
+        a.room_id roomId,
+        b.coordx,
+        b.coordy,
+        b.build_name buildName,
+        c.floor_num floorNum,
+        d.room_name roomName,
+        d.room_num roomNum
+        FROM
+        order_meeting_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        where a.del_flag = '0'
+        AND a.order_type = #{orderType}
+        AND a.order_meeting_id in
+        <foreach collection="ids" open="(" item="item" separator="," close=")">
+            #{item}
+        </foreach>
+        AND a.state in
+        <foreach collection="states" open="(" item="item" separator="," close=")">
+            #{item}
+        </foreach>
+        AND a.order_start_time &gt;= #{startTime} AND a.order_end_time &lt;= #{endTime}
+    </select>
+
+    <select id="getShortLatestDate" resultType="java.util.Date">
+        select MIN(order_start_time) from order_meeting_list
+        where del_flag = '0'
+        AND order_type = #{orderType}
+        AND order_meeting_id in
+        <foreach collection="ids" open="(" item="item" separator="," close=")">
+            #{item}
+        </foreach>
+        AND state in
+        <foreach collection="states" open="(" item="item" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+
+    <select id="getLongClockInfoByDate" resultType="com.eseasky.modules.order.vo.response.MeetingClockRepVO">
+        SELECT
+        a.order_meeting_id,
+        a.order_meeting_info_id,
+        a.order_type,
+        a.order_start_time,
+        a.order_end_time,
+        a.order_type orderType,
+        a.use_time useTime,
+        a.state `state`,
+        a.use_start_time,
+        a.use_end_time,
+        a.order_start_time orderStartTime,
+        a.order_end_time orderEndTime,
+        a.room_id roomId,
+        b.coordx,
+        b.coordy,
+        b.build_name buildName,
+        c.floor_num floorNum,
+        d.room_name roomName,
+        d.room_num roomNum
+        FROM
+        order_meeting_list a
+        LEFT JOIN space_build b ON a.build_id = b.build_id
+        LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+        LEFT JOIN space_room d ON a.room_id = d.room_id
+        where a.del_flag = '0'
+        AND a.order_meeting_id in
+        <foreach collection="ids" open="(" item="item" separator="," close=")">
+            #{item}
+        </foreach>
+        AND a.state in
+        <foreach collection="states" open="(" item="item" separator="," close=")">
+            #{item}
+        </foreach>
+        AND a.order_type = #{orderType}
+    </select>
+
+    <select id="getMeetingDetail" resultType="OrderMeetingDetailDTO">
+        SELECT
+            a.order_meeting_id,
+            a.order_type,
+            a.use_time,
+            a.order_start_time,
+            a.order_end_time,
+            a.use_start_time,
+            a.use_end_time,
+            a.state,
+            a.user_phone,
+            a.user_id,
+            a.user_no,
+            a.user_wechat,
+            a.user_org_name,
+            CASE
+                a.user_type
+                WHEN 1 THEN
+                    '学生'
+                WHEN 2 THEN
+                    '教职工' ELSE '无'
+                END userType,
+            a.user_name user_name,
+            b.build_name build_name,
+            c.floor_num floor_num,
+            d.room_num room_num,
+            d.room_name room_name
+        FROM
+            order_meeting_list a
+                LEFT JOIN space_build b ON a.build_id = b.build_id
+                LEFT JOIN space_floor c ON a.floor_id = c.floor_id
+                LEFT JOIN space_room d ON a.room_id = d.room_id
+        where
+            a.order_meeting_id = #{orderMeetingId}
+            AND a.order_type = #{orderType}
+    </select>
+
+</mapper>

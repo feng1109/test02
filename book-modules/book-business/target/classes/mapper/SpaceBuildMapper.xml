@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eseasky.modules.space.mapper.SpaceBuildMapper">
+
+    <!-- Build、Floor、Room -->
+    <resultMap id="OneBuildManyFloorManyRoom" type="com.eseasky.modules.space.entity.SpaceBuild">
+        <id column="build_id" property="buildId"/>
+        <result column="build_name" property="buildName"/>
+        <result column="build_num" property="buildNum"/>
+        <result column="floor_count" property="floorCount"/>
+        <result column="coordx" property="coordx"/>
+        <result column="coordy" property="coordy"/>
+        <result column="coord_name" property="coordName"/>
+        <result column="build_image" property="buildImage"/>
+        <result column="build_state" property="buildState"/>
+        <result column="build_dept_id" property="buildDeptId"/>
+        <collection property="floorList" ofType="com.eseasky.modules.space.entity.SpaceFloor">
+            <id column="f_floor_id" property="floorId"/>
+            <result column="f_build_id" property="buildId"/>
+            <result column="f_floor_num" property="floorNum"/>
+            <result column="f_floor_name" property="floorName"/>
+            <result column="f_floor_image" property="floorImage"/>
+            <result column="f_floor_state" property="floorState"/>
+            <collection property="roomList" ofType="com.eseasky.modules.space.entity.SpaceRoom">
+                <id column="r_room_id" property="roomId"/>
+                <result column="r_floor_id" property="floorId"/>
+                <result column="r_build_id" property="buildId"/>
+                <result column="r_room_name" property="roomName"/>
+                <result column="r_room_num" property="roomNum"/>
+                <result column="r_room_type" property="roomType"/>
+                <result column="r_room_image" property="roomImage"/>
+                <result column="r_area" property="area"/>
+                <result column="r_room_state" property="roomState"/>
+                <result column="r_room_dept_id" property="roomDeptId"/>
+                <result column="r_seat_count" property="seatCount"/>
+            </collection>
+        </collection>
+    </resultMap>
+
+    <!-- 排除已删除数据，不考虑禁用状态 -->
+    <select id="getBuildAndRoomStatisticsDropDown" resultType="map">
+        SELECT
+        b.build_id buildId,
+        b.build_name buildName,
+        r.room_id roomId,
+        r.room_name roomName
+        FROM
+        space_build b
+        LEFT JOIN space_floor f ON b.build_id = f.build_id
+        LEFT JOIN space_room r ON f.floor_id = r.floor_id
+        WHERE
+        b.del_flag = 1
+        AND f.del_flag = 1
+        AND r.del_flag = 1
+        <if test="orgIdList.size()>0 ">
+            AND b.build_dept_id IN
+            <foreach collection="orgIdList" item="orgId" index="index" open="(" close=")" separator=",">
+                #{orgId}
+            </foreach>
+        </if>
+        ORDER BY
+        b.build_num ASC,
+        f.floor_num ASC,
+        r.room_num ASC
+    </select>
+
+    <!-- 根据buildId查询该综合楼下的所有楼层 -->
+    <select id="getManyBuildManyFloor" resultMap="OneBuildManyFloorManyRoom">
+        SELECT
+        b.build_id,
+        b.build_name,
+        b.build_num,
+        b.floor_count,
+        b.coordx,
+        b.coordy,
+        b.coord_name,
+        b.build_image,
+        b.build_state,
+        b.build_dept_id,
+
+        f.floor_id as f_floor_id,
+        f.build_id as f_build_id,
+        f.floor_num as f_floor_num,
+        f.floor_name as f_floor_name,
+        f.floor_image as f_floor_image,
+        f.floor_state as f_floor_state
+        FROM space_build b
+        JOIN space_floor f ON b.build_id = f.build_id
+        WHERE
+        b.del_flag = 1
+        AND f.del_flag = 1
+        <if test="orgIdList.size()>0 ">
+            AND b.build_dept_id IN
+            <foreach collection="orgIdList" item="orgId" index="index" open="(" close=")" separator=",">
+                #{orgId}
+            </foreach>
+        </if>
+        ORDER BY
+        b.build_num asc, f.floor_num asc
+    </select>
+
+
+    <!-- 查询手机端综合楼列表 -->
+    <select id="queryMobileBulidList" resultType="com.eseasky.modules.space.vo.response.QueryMobileBulidList">
+        SELECT
+        b.build_id,
+        b.build_name,
+        b.build_num,
+        b.build_image,
+        b.build_state,
+        (
+        SELECT
+        SUM(r.seat_count)
+        FROM
+        space_room r
+        WHERE
+        r.build_id = b.build_id
+        AND r.del_flag = 1
+        ) seat_total
+        FROM
+        space_build b
+        WHERE
+        b.del_flag = 1
+        AND b.build_id IN
+        <foreach collection="buildIdList" item="buildId" index="index" open="(" close=")" separator=",">
+            #{buildId}
+        </foreach>
+        ORDER BY
+        b.build_state DESC, b.build_num ASC
+    </select>
+
+    <!-- 查询手机端综合楼列表，不需要排序、分页，根据距离、评分、常去排序的时候用到 -->
+    <select id="queryMobileBulidListNoPage" resultType="com.eseasky.modules.space.vo.response.QueryMobileBulidList">
+        SELECT
+        b.build_id,
+        b.build_name,
+        b.build_num,
+        b.build_image,
+        b.build_state,
+        (
+        SELECT
+        SUM(r.seat_count)
+        FROM
+        space_room r
+        WHERE
+        r.build_id = b.build_id
+        AND r.del_flag = 1
+        ) seat_total
+        FROM
+        space_build b
+        WHERE
+        b.del_flag = 1
+        AND b.build_id IN
+        <foreach collection="buildIdList" item="buildId" index="index" open="(" close=")" separator=",">
+            #{buildId}
+        </foreach>
+    </select>
+
+    <select id="getShortestBuild" resultType="com.eseasky.modules.order.dto.GetShortestBuildDTO">
+		SELECT
+			build_id,
+			CONCAT_WS( '-', b.org_name, build_name ) area,
+			coordx,
+			coordy
+		FROM
+			space_build a
+		LEFT JOIN sys_org b ON a.build_dept_id = b.id
+			where a.del_flag='1'
+		ORDER BY
+			POW( coordx - #{coordx}, 2 )+ POW( coordy - #{coordy}, 2 ) ASC
+		LIMIT 2
+	</select>
+</mapper>
