@@ -1,0 +1,112 @@
+package ${package}.${moduleName}.controller;
+
+import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import ${package}.${moduleName}.entity.${className};
+import ${package}.${moduleName}.service.${className}Service;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import com.eseasky.common.code.utils.R;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+
+import com.eseasky.common.code.vo.PageResultVO;
+
+
+/**
+ * ${comments}
+ *
+ * @author ${author}
+ * @date ${datetime}
+ */
+@Api(tags = "${comments}")
+@Slf4j
+@RestController
+@AllArgsConstructor
+@RequestMapping("/${moduleName}/${pathName}")
+public class ${className}Controller {
+
+    private final ${className}Service ${classname}Service;
+
+    /**
+     * ${comments}分页查询
+     * @param pageResultVO ${comments}分页对象
+     * @return
+     */
+    @ApiOperation(value = "${comments}分页查询", notes = "${comments}分页查询")
+    @PostMapping("/page")
+    public R<IPage<${className}>> get${className}Page(@RequestBody @Validated PageResultVO<${className}> pageResultVO) {
+        Page page = new Page(pageResultVO.getCurrent(), pageResultVO.getSize());
+        QueryWrapper<${className}> queryWrapper = new QueryWrapper<>(pageResultVO.getParam());
+        return new R<>(${classname}Service.page(page,queryWrapper));
+    }
+
+
+    /**
+     * 通过id查询单条记录
+     * @param ${pk.lowerAttrName}
+     * @return R
+     */
+    @ApiOperation(value = "通过id查询单条记录", notes = "通过id查询单条记录")
+    @GetMapping("/{${pk.lowerAttrName}}")
+    public R<${className}> getById(@PathVariable("${pk.lowerAttrName}") ${pk.attrType} ${pk.lowerAttrName}) {
+        return new R<>(${classname}Service.getById(${pk.lowerAttrName}));
+    }
+
+    /**
+     * 新增记录
+     * @param ${classname}
+     * @return R
+     */
+    @ApiOperation(value = "新增${comments}", notes = "新增${comments}")
+    @PostMapping
+    public R save(@RequestBody ${className} ${classname}) {
+        return new R<>(${classname}Service.save(${classname}));
+    }
+
+    /**
+     * 修改记录
+     * @param ${classname}
+     * @return R
+     */
+    @ApiOperation(value = "修改${comments}", notes = "修改${comments}")
+    @PutMapping
+    public R update(@RequestBody ${className} ${classname}) {
+        return new R<>(${classname}Service.updateById(${classname}));
+    }
+
+    /**
+     * 通过id删除一条记录
+     * @param ${pk.lowerAttrName}
+     * @return R
+     */
+    @ApiOperation(value = "删除${comments}", notes = "删除${comments}")
+    @DeleteMapping("/{${pk.lowerAttrName}}")
+    //@PreAuthorize("@pms.hasPermission('${moduleName}_${pathName}_del')")
+    public R removeById(@PathVariable ${pk.attrType} ${pk.lowerAttrName}) {
+        return new R<>(${classname}Service.removeById(${pk.lowerAttrName}));
+    }
+
+    /**
+     * 批量删除
+     * @param ${pk.lowerAttrName}s (array)
+     * @return R
+     */
+    @ApiOperation(value = "批量删除${comments}", notes = "批量删除${comments}")
+    @DeleteMapping("/deleteBatch")
+    public R deleteBatch(@RequestBody String ${pk.lowerAttrName}s) {
+        if (${pk.lowerAttrName}s == null || "".equals(${pk.lowerAttrName}s.trim())) {
+            return R.error("删除数据不能为空!");
+        } else {
+            this.${classname}Service.removeByIds(JSONUtil.parseArray(${pk.lowerAttrName}s).toList(String.class));
+            return R.ok("删除成功");
+        }
+    }
+
+
+}

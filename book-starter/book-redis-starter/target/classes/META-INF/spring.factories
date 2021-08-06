@@ -1,0 +1,3 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.eseasky.book.redis.starter.RedisAutoConfigure,\
+com.eseasky.book.redis.starter.template.RedisRepository

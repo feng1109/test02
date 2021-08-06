@@ -1,0 +1,452 @@
+<template>
+  <basic-container class="pubOut3">
+    <div class="userPUB" style="height: 100%;background:#f0f3f4;overflow: auto;">
+
+      <el-row class="pubOut3TopButs">
+        <el-button class="pubButton butSave" icon="iconfont iconanniu-baocun" @click="modifySave"> 提交</el-button>
+        <el-button class="pubButton butAdd" icon="iconfont iconsys-sub-sub-zengjiaqianqia" @click="addC"> 新增</el-button>
+        <el-button v-show="deleteBatchIs" class="pubButton butDelete" icon="iconfont icondel" @click="deleteBatch"> 批量删除</el-button>
+        <el-upload style="margin-right: 0px;display: inline-block;" class="upload-demo el-upload-inline" action="string"
+          accept=".xls,.xlsx" :http-request="uploadExcel" :before-upload="handleUploadBefore" :show-file-list="false">
+          <el-button class="pubButton butImport" icon="iconfont icondaoru"> 导入</el-button>
+        </el-upload>
+        <el-button class="pubButton butExport" icon="iconfont icondaochu" @click="exportExcelC"> 导出</el-button>
+      </el-row>
+
+      <el-row class="pubOut3top">
+          #foreach ($column in $columns)
+              #if($velocityCount == 1)
+                  <div class="selNameOutDiv" v-if="searchShowIs">
+                      <span class="selName">$column.comments：</span>
+                      <el-input class="pubInput" placeholder="请输入$column.comments" v-model="searchForm.$column.lowerAttrName" clearable size='small'></el-input>
+                  </div>
+              #end
+              #if($column.attrType == 'LocalDateTime')
+                  <div class="selNameOutDiv" v-if="searchShowIs">
+                      <span class="selName">$column.comments：</span>
+                      <el-date-picker v-model="searchForm.$column.lowerAttrName" class="pubInput" format="yyyy-MM-dd HH:mm:ss" value-format="yyyy-MM-dd HH:mm:ss" type="datetime" size="small" :clearable="false" :editable="false" placeholder="请选择$column.comments" ></el-date-picker>
+                  </div>
+              #end
+          #end
+        <div class="selNameOutDiv">
+          <el-button class="pubButton butSearch" icon="iconfont iconchaxun-copy" @click="search"> 查询</el-button>
+          <el-button class="pubButton butReset" icon="iconfont iconicon-_zhongzhi" @click='reset'> 重置</el-button>
+          <el-button class="" type="text" style="margin-left:20px" @click="searchShow">展开
+            <i v-show="searchShowIs" class="el-icon-arrow-up"></i>
+            <i v-show="!searchShowIs" class="el-icon-arrow-down"></i>
+          </el-button>
+        </div>
+      </el-row>
+
+      <div class="lineEEE"></div>
+
+      <div class="pubout3center pubout3centerForm" style="height: calc(100% - 150px);">
+
+        <sdy-table ref="tableOne" :tableDataPost="tableDataPost" :tableDataPostParam="searchForm" :option="option"
+          @selection-change="handleSelectionChange">
+          <el-table-column fixed="right" label="操作" align='center' show-overflow-tooltip width="150">
+            <template slot-scope="scope">
+              <el-button type="text" @click="handleEdit(scope.row,scope.$index)">编辑</el-button>
+              <el-button type="text" @click="handleDel(scope.row,scope.$index)">删除</el-button>
+            </template>
+          </el-table-column>
+        </sdy-table>
+
+      </div>
+
+      <el-dialog title="编辑" width="1000px" :visible.sync="dialogIS" class="dialog-dialogTableJe">
+        <el-form :model="dialogData" :rules="dialogDataRules" ref="dialogData" label-position="right" label-width="135px"
+          class="demo-ruleForm area-ruleForm">
+          <div class="dialogContent">
+              <!--编辑框循环-->
+              <el-row>
+              #set($columnIndex=1)
+              #foreach($column in $columns)
+                  #if($column.attrType != 'LocalDateTime')
+                      <el-col :span="8">
+                          <el-form-item label="$column.comments" prop="$column.lowerAttrName">
+                              <el-input class="el-dialog-child" placeholder="请输入$column.comments" v-model="dialogData.$column.lowerAttrName" clearable size="small"></el-input>
+                          </el-form-item>
+                      </el-col>
+                  #end
+                  #if($column.attrType == 'LocalDateTime')
+                      <el-col :span="8">
+                          <el-form-item label="$column.comments" prop="$column.lowerAttrName">
+                              <el-date-picker v-model="dialogData.$column.lowerAttrName" class="el-dialog-child" format="yyyy-MM-dd HH:mm:ss" value-format="yyyy-MM-dd HH:mm:ss" type="datetime" size="small" :clearable="false" :editable="false" placeholder="请选择$column.comments"></el-date-picker>
+                          </el-form-item>
+                      </el-col>
+                  #end
+                  #if($!columnIndex % 3 == 0)
+                  </el-row>
+                  <el-row>
+                  #end
+                  #set($columnIndex=$columnIndex+1)
+              #end
+              </el-row>
+          </div>
+          <el-form-item class="pubDialogFooter dialogSub" style="margin-bottom: 0;padding: 5px 20px;">
+            <el-button class="pubButton butSure" icon="iconfont icongou-copy" @click="submitFormDialog('dialogData')">
+              保存</el-button>
+            <el-button class="pubButton butClose" icon="iconfont iconguanbi" @click="resetFormDialog('dialogData')">
+              取消</el-button>
+          </el-form-item>
+        </el-form>
+      </el-dialog>
+
+      <el-dialog title="新增" width="1000px" :visible.sync="dialogISAdd" class="dialog-dialogTableJe">
+        <el-form :model="dialogDataAdd" :rules="dialogDataRulesAdd" ref="dialogDataAdd" label-position="right"
+          label-width="135px" class="demo-ruleForm area-ruleForm">
+          <div class="dialogContent">
+              <!--新增框循环-->
+              <el-row>
+                  #set($columnIndex=1)
+                  #foreach($column in $columns)
+                      #if($column.attrType != 'LocalDateTime')
+                          <el-col :span="8">
+                              <el-form-item label="$column.comments" prop="$column.lowerAttrName">
+                                  <el-input class="el-dialog-child" placeholder="请输入$column.comments" v-model="dialogDataAdd.$column.lowerAttrName" clearable size="small"></el-input>
+                              </el-form-item>
+                          </el-col>
+                      #end
+                      #if($column.attrType == 'LocalDateTime')
+                          <el-col :span="8">
+                              <el-form-item label="$column.comments" prop="$column.lowerAttrName">
+                                  <el-date-picker v-model="dialogDataAdd.$column.lowerAttrName" class="el-dialog-child" format="yyyy-MM-dd HH:mm:ss" value-format="yyyy-MM-dd HH:mm:ss" type="datetime" size="small" :clearable="false" :editable="false" placeholder="请选择$column.comments" ></el-date-picker>
+                              </el-form-item>
+                          </el-col>
+                      #end
+                      #if($!columnIndex % 3 == 0)
+                      </el-row>
+                      <el-row>
+                      #end
+                      #set($columnIndex=$columnIndex+1)
+                  #end
+              </el-row>
+          </div>
+          <el-form-item class="pubDialogFooter dialogSub" style="margin-bottom: 0;padding: 5px 20px;">
+            <el-button class="pubButton butSure" icon="iconfont icongou-copy" @click="submitFormDialogAdd('dialogDataAdd')">
+              保存</el-button>
+            <el-button class="pubButton butClose" icon="iconfont iconguanbi" @click="resetFormDialogAdd('dialogDataAdd')">
+              取消</el-button>
+          </el-form-item>
+        </el-form>
+      </el-dialog>
+
+
+    </div>
+  </basic-container>
+</template>
+
+<script>
+  import request from '@/router/axios';
+  import sdyTable from '@/components/sdy/sdyTable';//公共表格（自定义需要手动拷贝修改路径）
+  import {
+      fetchList,
+      getObj,
+      addObj,
+      putObj,
+      delObj,
+      importExcel,
+      exportExcel,
+      deleteBatch
+  } from '@/api/${moduleName}/${pathName}'; //api接口
+
+  export default {
+    components: {
+      "sdy-table": sdyTable
+    },
+    data() {
+      return {
+        deleteBatchIs: false,
+        dialogIS: false,
+        dialogData: {},
+        dialogDataRules: {
+            #foreach ($column in $columns)
+                '$column.lowerAttrName': [{
+                    required: true,
+                    message: '$column.comments不能为空',
+                    trigger: 'change'
+                }],
+            #end
+        },
+        dialogISAdd: false,
+        dialogDataAdd: {},
+        dialogDataRulesAdd: {
+            #foreach ($column in $columns)
+                '$column.lowerAttrName': [{
+                    required: true,
+                    message: '$column.comments不能为空',
+                    trigger: 'change'
+                }],
+            #end
+        },
+        handleSelects: [], //选择表格后的数据
+        selectedIds: [], //选择表格后的id
+        searchShowIs: false,
+        searchForm: {},
+        loading: false,
+        option: [
+            #foreach ($column in $columns)
+                {
+                    label: '$column.comments',
+                    prop: '$column.lowerAttrName',
+                    width: '80'
+                },
+            #end
+        ], //配置表头名称
+        tableDataPost: fetchList, //表格数据请求接口方法
+      }
+    },
+    created() {
+
+    },
+    mounted() {
+
+    },
+    methods: {
+        //单笔删除方法
+        handleDel(row, index) {
+            var _this = this
+            this.$confirm('是否确认删除ID为' + row.id + '的记录', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }).then(function () {
+                return delObj(row.id)
+            }).then(data => {
+                if (data.data.code == '0') {
+                    _this.$message({
+                        showClose: true,
+                        message: '删除成功',
+                        type: 'success'
+                    })
+                    _this.search()
+                }
+            }).catch(function (err) {
+                _this.$message({
+                    showClose: true,
+                    message: '删除异常:' + err,
+                    type: 'error'
+                })
+            })
+        },
+        //打开编辑框
+        handleEdit(row, index) {
+            this.dialogData = JSON.parse(JSON.stringify(row));
+            this.dialogIS = true;
+        },
+
+        //编辑框保存方法
+        submitFormDialog(formName) {
+            var _this = this
+            var _refs = this.$refs;
+            _refs[formName].validate((valid) => {
+                if (valid) {
+                    putObj(_this.dialogData).then(data => {
+                        if (data.data.code == '0') {
+                            _this.$message({
+                                showClose: true,
+                                message: '修改成功',
+                                type: 'success'
+                            })
+                            _this.dialogIS = false
+                            _this.search()
+                        }
+                    })
+                }
+            })
+        },
+        //关闭编辑框
+        resetFormDialog(formName) {
+            this.dialogIS = false;
+        },
+
+        //批量删除
+        deleteBatch() {
+            var _this = this
+            this.$confirm('是否确认删除已选择的记录', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }).then(function () {
+                return deleteBatch(_this.selectedIds);
+            }).then(data => {
+                _this.search()
+                _this.$message({
+                    showClose: true,
+                    message: '批量删除成功',
+                    type: 'success'
+                })
+            })
+        },
+
+        //打开新增框
+        addC() {
+            this.dialogDataAdd = {};
+            this.dialogISAdd = true;
+        },
+        //新增框保存方法
+        submitFormDialogAdd(formName) {
+            var _this = this
+            var _refs = this.$refs;
+            _refs[formName].validate((valid) => {
+                if (valid) {
+                    addObj(_this.dialogDataAdd).then(data => {
+                        if (data.data.code == '0') {
+                            this.$message({
+                                showClose: true,
+                                message: '添加成功',
+                                type: 'success'
+                            })
+                            _this.dialogIS = false
+                            _this.search()
+                        }
+                    })
+                }
+            });
+        },
+        //关闭新增框
+        resetFormDialogAdd(formName) {
+            this.dialogISAdd = false;
+        },
+
+        //搜索框隐藏和显示
+        searchShow() {
+            this.searchShowIs = !this.searchShowIs
+        },
+        //搜索方法
+        search() {
+            this.$refs.tableOne.search();
+        },
+        //重置搜索表单
+        reset() {
+            this.searchForm = {}
+        },
+        //动态表格整页保存
+        modifySave() {
+            //TODO 自定义实现
+            this.$message({
+                showClose: true,
+                message: 'todo',
+                type: 'warning'
+            })
+        },
+
+        /**导入excel文件*/
+        uploadExcel(param) {
+            var _this = this;
+            let loading = this.$loading({
+                lock: true,
+                text: '正在导入...',
+                spinner: 'el-icon-loading',
+                background: 'rgba(0, 0, 0, 0.7)'
+            });
+            const formData = new FormData()
+            formData.append('file', param.file)
+
+            importExcel(formData).then(data => { //
+                loading.close();
+                if (data.data.code == '0') {
+                    this.$message({
+                        showClose: true,
+                        message: '导入成功',
+                        type: 'success'
+                    })
+                    this.search();
+                }
+            })
+
+        },
+        /**上传前校验*/
+        handleUploadBefore(file) {
+            const extension = file.name.substring(file.name.lastIndexOf('.') + 1);
+            const isXls = extension === 'xls';
+            const isXlsx = extension === 'xlsx';
+
+            if (!isXls && !isXlsx) {
+                this.$message({
+                    showClose: true,
+                    message: '导入的文件只能是excel文件',
+                    type: 'error'
+                })
+            }
+            return isXls || isXlsx;
+        },
+
+        /**导出文件*/
+        downloadExcel(param, loading) {
+            exportExcel(param).then(res => { //导出的请求
+                const fileName = "${comments}";
+                if (!res.data) {
+                    loading.close();
+                    this.$message({
+                        showClose: true,
+                        message: '文件下载失败',
+                        type: 'warning'
+                    })
+                    return
+                }
+                if (typeof window.navigator.msSaveBlob !== 'undefined') {
+                    window.navigator.msSaveBlob(new Blob([res.data]), fileName + '.xls')
+                } else {
+                    let url = window.URL.createObjectURL(new Blob([res.data]))
+                    let link = document.createElement('a')
+                    link.style.display = 'none'
+                    link.href = url
+                    link.setAttribute('download', fileName + '.xls')
+                    document.body.appendChild(link)
+                    link.click()
+                    document.body.removeChild(link); //下载完成移除元素
+                    loading.close();
+                    window.URL.revokeObjectURL(url); //释放掉blob对象
+                }
+            })
+            setTimeout(() => {
+                loading.close();
+            }, 20000);
+        },
+
+        //导出前置方法
+        exportExcelC() {
+            var datas = JSON.parse(JSON.stringify(this.searchForm));
+            var loading = this.$loading({
+                lock: true,
+                text: '正在下载 ，请稍后！',
+                spinner: 'el-icon-loading',
+                background: 'rgba(0, 0, 0, 0.7)'
+            });
+            this.downloadExcel(datas, loading)
+        },
+
+        //查询工具栏显示与隐藏
+        handleSelectionChange(val) {
+            if (val.length == "0") {
+                this.deleteBatchIs = false;
+            } else {
+                this.deleteBatchIs = true;
+            }
+            this.handleSelects = val;
+            this.selectedIds = [];
+            for (let i in val) {
+                this.selectedIds.push(val[i].$pk.lowerAttrName);
+            }
+        },
+
+    }
+  }
+</script>
+
+<style scoped>
+  .userPUB .pubOut3top .selNameOutDiv {
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+
+  .userPUB .pubOut3top .selNameOutDiv .pubInput {
+    width: auto;
+  }
+
+  .userPUB .el-dialog-child {
+      width: 100%;
+  }
+</style>

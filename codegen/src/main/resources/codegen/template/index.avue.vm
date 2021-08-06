@@ -1,0 +1,308 @@
+<template>
+    <div class="app-container pull-auto">
+        <basic-container>
+            <avue-crud ref="crud"
+                       :page="page"
+                       :data="tableData"
+                       :table-loading="tableLoading"
+                       :option="tableOption"
+                       @on-load="getList"
+                       @current-change="currentChange"
+                       @refresh-change="refreshChange"
+                       @search-change="handleFilter"
+                       @size-change="sizeChange"
+                       @row-update="handleUpdate"
+                       @row-save="handleSave"
+                       @row-del="rowDel"
+                       @selection-change="selectionChange">
+                <template slot="menuLeft">
+                    <el-button type="primary"
+                               @click="handleAdd"
+                               size="small"
+                               v-if="permissions.${moduleName}_${pathName}_add"
+                               icon="el-icon-edit">新增
+                    </el-button>
+                    <el-upload action="string"
+                               width="20px;"
+                               style="display: inline-flex"
+                               :http-request="uploadExcel"
+                               accept=".xls,.xlsx"
+                               :show-file-list="false"
+                               v-if="permissions.${moduleName}_${pathName}_import"
+                               :before-upload="handleUploadBefore">
+                        <el-button type="primary"
+                                   size="small"
+                                   icon="el-icon-upload2">导入
+                        </el-button>
+                    </el-upload>
+                    <el-button type="primary"
+                               @click="downloadExcel"
+                               size="small"
+                               icon="el-icon-download">导出
+                    </el-button>
+                    <el-dropdown placement="bottom-start"
+                                 v-if="this.selectedData.length!=0 && permissions.${moduleName}_${pathName}_del"
+                                 @command="handleCommand">
+                <span class="el-color-dropdown__btn el-button el-button--small is-plain">
+                  批量操作<i class="el-icon-arrow-down el-icon--right"></i>
+                </span>
+                        <el-dropdown-menu slot="dropdown">
+                            <el-dropdown-item class="is-plain" command="deleteBatch">
+                                <i class="el-icon-delete">&nbsp;</i>删除
+                            </el-dropdown-item>
+                        </el-dropdown-menu>
+                    </el-dropdown>
+                    <br/><br/>
+                </template>
+                <template slot-scope="scope"
+                          slot="menu">
+                    <el-button type="primary"
+                               v-if="permissions.${moduleName}_${pathName}_edit"
+                               icon="el-icon-check"
+                               size="small"
+                               plain
+                               @click="handleEdit(scope.row,scope.index)">编辑
+                    </el-button>
+                    <el-button type="danger"
+                               v-if="permissions.${moduleName}_${pathName}_del"
+                               icon="el-icon-delete"
+                               size="small"
+                               plain
+                               @click="handleDel(scope.row,scope.index)">删除
+                    </el-button>
+                </template>
+            </avue-crud>
+        </basic-container>
+    </div>
+</template>
+
+<script>
+    import {
+        fetchList,
+        getObj,
+        addObj,
+        putObj,
+        delObj,
+        importExcel,
+        exportExcel,
+        deleteBatch
+    } from '@/api/${moduleName}/${pathName}'
+    import {tableOption} from '@/const/crud/${moduleName}/${pathName}'
+    import {mapGetters} from 'vuex'
+
+    export default {
+        name: '${pathName}',
+        data() {
+            return {
+                tableData: [],
+                selectedData: [],
+                page: {
+                    total: 0, // 总页数
+                    currentPage: 1, // 当前页数
+                    pageSize: 20 // 每页显示多少条
+                },
+                listQuery: {
+                    current: 1,
+                    size: 20
+                },
+                tableLoading: false,
+                tableOption: tableOption
+            }
+        },
+        created() {
+            this.getList(this.page)
+        },
+        mounted: function () {
+        },
+        computed: {
+            ...mapGetters(['permissions'])
+        },
+        methods: {
+            getList(page, params) {
+                this.tableLoading = true
+                fetchList(Object.assign({
+                    current: page.currentPage,
+                    size: page.pageSize
+                }, params)).then(response => {
+                    this.tableData = response.data.data.records
+                    this.page.total = response.data.data.total
+                    this.tableLoading = false
+                });
+            },
+            currentChange(val) {
+                this.page.current = val
+                this.listQuery.current = val
+                this.getList(page)
+            },
+            sizeChange(val) {
+                this.page.size = val
+                this.listQuery.size = val
+                this.getList(page)
+            },
+            /**
+             * @title 打开新增窗口
+             * @detail 调用crud的handleadd方法即可
+             *
+             **/
+            handleAdd: function () {
+                this.$refs.crud.rowAdd()
+            },
+            handleEdit(row, index) {
+                this.$refs.crud.rowEdit(row, index)
+            },
+            handleDel(row, index) {
+                this.$refs.crud.rowDel(row, index)
+            },
+            rowDel: function (row, index) {
+                var _this = this
+                this.$confirm('是否确认删除ID为' + row.$pk.lowerAttrName + '的记录', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                })
+                        .then(function () {
+                            return delObj(row.$pk.lowerAttrName)
+                        })
+                        .then(data => {
+                            _this.tableData.splice(index, 1)
+                            _this.$message({
+                                showClose: true,
+                                message: '删除成功',
+                                type: 'success'
+                            })
+                        })
+                        .catch(function (err) {
+                        })
+            },
+            /**
+             * @title 数据更新
+             * @param row 为当前的数据
+             * @param index 为当前更新数据的行数
+             * @param done 为表单关闭函数
+             *
+             **/
+            handleUpdate: function (row, index, done) {
+                putObj(row).then(data => {
+                    this.getList(this.page);
+                    this.$message({
+                        showClose: true,
+                        message: '修改成功',
+                        type: 'success'
+                    })
+                    done()
+                })
+            },
+            /**
+             * @title 数据添加
+             * @param row 为当前的数据
+             * @param done 为表单关闭函数
+             *
+             **/
+            handleSave: function (row, done) {
+                addObj(row).then(data => {
+                    this.getList(this.page);
+                    this.$message({
+                        showClose: true,
+                        message: '添加成功',
+                        type: 'success'
+                    })
+                    done()
+                })
+            },
+            /**
+             * 刷新回调
+             */
+            refreshChange() {
+                this.getList(this.page)
+            },
+            /**搜索更新*/
+            handleFilter(param) {
+                this.page.page = 1;
+                this.getList(this.page, param);
+            },
+            /**导出excel文件*/
+            downloadExcel(param) {
+                exportExcel(param).then(res => {
+                            const fileName = "${comments}";
+                            if (!res.data) {
+                                this.$message.warning("文件下载失败")
+                                        return
+                            }
+                            if (typeof window.navigator.msSaveBlob !== 'undefined') {
+                                window.navigator.msSaveBlob(new Blob([res.data]), fileName + '.xls')
+                            } else {
+                                let url = window.URL.createObjectURL(new Blob([res.data]))
+                                let link = document.createElement('a')
+                                link.style.display = 'none'
+                                link.href = url
+                                link.setAttribute('download', fileName + '.xls')
+                                document.body.appendChild(link)
+                                link.click()
+                                document.body.removeChild(link); //下载完成移除元素
+                                window.URL.revokeObjectURL(url); //释放掉blob对象
+                            }
+                        }
+                )
+            },
+            /**上传前校验*/
+            handleUploadBefore(file) {
+                const extension = file.name.substring(file.name.lastIndexOf('.') + 1);
+                const isXls = extension === 'xls';
+                const isXlsx = extension === 'xlsx';
+
+                if (!isXls && !isXlsx) {
+                    this.$message.error('导入的文件只能是excel文件!');
+                }
+                return isXls || isXlsx;
+            },
+            /**导入excel文件*/
+            uploadExcel(param) {
+                var _this = this;
+                const formData = new FormData()
+                formData.append('file', param.file)
+                importExcel(formData).then(data => {
+                    _this.refreshChange(_this.page);
+                    _this.$message({
+                        showClose: true,
+                        message: data.data.msg,
+                        type: 'success'
+                    })
+                    done()
+                })
+            },
+            /**全选触发事件*/
+            selectionChange(list) {
+                this.selectedData = [];
+                for (let i in list) {
+                    this.selectedData.push(list[i].$pk.lowerAttrName);
+                }
+            },
+            /**下拉框批量操作*/
+            handleCommand(commond) {
+                var _this = this;
+                if (commond == 'deleteBatch') {
+                    this.$confirm('是否确认删除已选择的记录', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(function () {
+                        return deleteBatch(_this.selectedData);
+                    }).then(data => {
+                        _this.refreshChange(_this.page);
+                        _this.$message({
+                            showClose: true,
+                            message: '删除成功',
+                            type: 'success'
+                        })
+                    })
+                }
+
+            }
+
+        }
+    }
+</script>
+
+<style lang="scss" scoped>
+</style>
+
